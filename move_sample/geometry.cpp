@@ -41,7 +41,7 @@ float angleTo(float fromX, float fromZ, float toX, float toZ)
 	float dz = toZ - fromZ;
 
 	// atan2(dx, dz) instead of atan2(dz, dx)
-	float angle = std::atan2(dx, dz);
+	float angle = std::atan2(dz, dx);
 
 	// Keep it in range [-PI, PI]
 	return normalizeAngle(angle);
@@ -49,8 +49,8 @@ float angleTo(float fromX, float fromZ, float toX, float toZ)
 
 float normalizeAngle(float angle)
 {
-	while (angle > M_PI) angle -= 2.0f * M_PI;
-	while (angle < -M_PI) angle += 2.0f * M_PI;
+	while (angle > 2 * M_PI) angle -= 2.0f * M_PI;
+	while (angle < 0) angle += 2.0f * M_PI;
 	return angle;
 }
 

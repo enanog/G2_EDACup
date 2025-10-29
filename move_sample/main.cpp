@@ -48,6 +48,27 @@ GameState parseStateMessage(const json& message);
 void sendCommands(const RobotCommand& bot1Cmd, const RobotCommand& bot2Cmd);
 
 
+void poseHomeBot1(float positionX, float positionZ, float rotationY)
+{
+	json sampleMessage = {
+		{"type", "set"},
+		{"data",
+		 {{
+			 "homeBot1",
+			 {
+				 {"positionXZ", {positionX, positionZ}},
+				 {"rotationY", rotationY},
+			 },
+		 }}},
+	};
+
+	// cout connects to server
+	cout << sampleMessage.dump() << endl;
+
+	// cerr prints to debug console
+	cerr << "Updated homeBot1 pose." << endl;
+}
+
 int main(int argc, char* argv[])
 {
 	bool isRunning = false;
@@ -86,38 +107,15 @@ int main(int argc, char* argv[])
 
 				// Convert JSON into our minimal GameState
 				GameState state = parseStateMessage(message);
-				RobotCommand bot1Cmd;
 
-				if (time == 40)
-				{
-					RobotCommand bot1Cmd = moveToPosition(state.homeBot1, -0.79f, 1.95f);
-					cerr << "esquina arriba derecha" << endl;
-				}
-				else if (80 == time)
-				{
-					RobotCommand bot1Cmd = moveToPosition(state.homeBot2, 0.79f, 1.95f);
-					cerr << "esquina abajo derecha" << endl;
-				}
-				else if (120 == time)
-				{
-					RobotCommand bot1Cmd = moveToPosition(state.homeBot1, 0.79f, -1.95f);
-					cerr << "esquina abajo izquierda" << endl;
-				}
-				else if (160 == time)
-				{
-					RobotCommand bot1Cmd = moveToPosition(state.homeBot1, -0.79f, -1.95f);
-					cerr << "esquina arriba izquierda" << endl;
-				}
-				time++;
-				if(time == 160)
-					time = 0;
-
-				RobotCommand bot2Cmd = moveToPosition(state.homeBot2, state.ball.posX, state.ball.posZ);
+				/*RobotCommand bot1Cmd = moveToPosition(state.homeBot1, state.homeBot2.posX, state.homeBot2.posZ);
+				RobotCommand bot2Cmd = moveToPosition(state.homeBot2, state.homeBot1.posX, state.homeBot1.posZ);
 				//decideStrategy(state, bot1Cmd, bot2Cmd);
 
 				// Send commands back to simulator
-				sendCommands(bot1Cmd, bot2Cmd);
-				
+				sendCommands(bot1Cmd, bot2Cmd);*/
+				poseHomeBot1(-1.095, 0.79, 0);
+
 			}
 		}
 		catch (const std::exception& e) {
@@ -155,10 +153,20 @@ json createSetMessage(const RobotCommand& bot1Cmd, const RobotCommand& bot2Cmd)
 	return message;
 }
 
+void sendCommands(const RobotCommand& bot1Cmd, const RobotCommand& bot2Cmd)
+{
+	json message = createSetMessage(bot1Cmd, bot2Cmd);
+
+	// Use cout for simulator communication (one line).
+	cout << message.dump() << endl;
+	cout.flush();
+}
+
 GameState parseStateMessage(const json& message)
 {
 	GameState state; 
 
+	cerr << endl << message.dump() << endl;
 	// get data object, bail out early if missing
 	if (!message.contains("data")) return state;
 	const json& data = message["data"];
@@ -202,20 +210,11 @@ GameState parseStateMessage(const json& message)
 
 	cerr << "Parsed state: "
 		 << "HomeBot1(" << state.homeBot1.posX << "," << state.homeBot1.posZ << ") "
-		 /* << "HomeBot2(" << state.homeBot2.posX << "," << state.homeBot2.posZ << ") "
+		 << "HomeBot2(" << state.homeBot2.posX << "," << state.homeBot2.posZ << ") "
 		 << "RivalBot1(" << state.rivalBot1.posX << "," << state.rivalBot1.posZ << ") "
 		 << "RivalBot2(" << state.rivalBot2.posX << "," << state.rivalBot2.posZ << ") "
-		 << "Ball(" << state.ball.posX << "," << state.ball.posZ << ")"*/
-		<< endl;
+		 << "Ball(" << state.ball.posX << "," << state.ball.posZ << ")"
+		<< "------------------------------------------------------------------------" << endl;
 
 	return state;
-}
-
-void sendCommands(const RobotCommand& bot1Cmd, const RobotCommand& bot2Cmd)
-{
-	json message = createSetMessage(bot1Cmd, bot2Cmd);
-
-	// Use cout for simulator communication (one line).
-	cout << message.dump() << endl;
-	cout.flush();
 }
