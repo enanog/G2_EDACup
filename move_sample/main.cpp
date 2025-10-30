@@ -1,11 +1,12 @@
-/*
- * @brief Main program loop and JSON communication with simulator
+/**
+ * @file main.cpp
+ * @brief Main program entry point
  * @author Agustin Valenzuela,
  *         Alex Petersen,
  *         Dylan Frigerio,
  *         Enzo Fernandez Rosas
  *
- * @copyright Copyright(c) 2025
+ * @copyright Copyright (c) 2025
  */
 
 #include <iostream>
@@ -16,7 +17,6 @@
 #include "constants.h"
 #include "robot.h"
 #include "strategy.h"
-#include "geometry.h"
 
 using json = nlohmann::json;
 using namespace std;
@@ -25,196 +25,144 @@ using namespace std;
 // COMMUNICATION FUNCTIONS
 // ============================================================================
 
-/**
- * @brief Create JSON message to send robot commands
- * @param bot1Cmd Command for robot 1
- * @param bot2Cmd Command for robot 2
- * @return JSON message in correct format
- */
-json createSetMessage(const RobotCommand& bot1Cmd, const RobotCommand& bot2Cmd);
-
-/**
- * @brief Parse incoming state message from simulator
- * @param message JSON message received
- * @return Parsed game state
- */
-GameState parseStateMessage(const json& message);
-
-/**
- * @brief Send commands to simulator via stdout
- * @param bot1Cmd Command for robot 1
- * @param bot2Cmd Command for robot 2
- */
-void sendCommands(const RobotCommand& bot1Cmd, const RobotCommand& bot2Cmd);
-
-
-void poseHomeBot1(float positionX, float positionZ, float rotationY)
-{
-	json sampleMessage = {
-		{"type", "set"},
-		{"data",
-		 {{
-			 "homeBot1",
-			 {
-				 {"positionXZ", {positionX, positionZ}},
-				 {"rotationY", rotationY},
-			 },
-		 }}},
-	};
-
-	// cout connects to server
-	cout << sampleMessage.dump() << endl;
-
-	// cerr prints to debug console
-	cerr << "Updated homeBot1 pose." << endl;
+// Create JSON message for robot commands
+json createSetMessage(const RobotCommand& bot1Cmd, const RobotCommand& bot2Cmd) {
+    json message = {
+        {"type", "set"},
+        {"data", {
+            {"homeBot1", {
+                {"positionXZ", {bot1Cmd.targetX, bot1Cmd.targetZ}},
+                {"rotationY", bot1Cmd.targetRotY},
+                {"dribbler", bot1Cmd.dribbler},
+                {"kick", bot1Cmd.kick},
+                {"chirp", bot1Cmd.chip}
+            }},
+            {"homeBot2", {
+                {"positionXZ", {bot2Cmd.targetX, bot2Cmd.targetZ}},
+                {"rotationY", bot2Cmd.targetRotY},
+                {"dribbler", bot2Cmd.dribbler},
+                {"kick", bot2Cmd.kick},
+                {"chirp", bot2Cmd.chip}
+            }}
+        }}
+    };
+    return message;
 }
 
-int main(int argc, char* argv[])
-{
-	bool isRunning = false;
-	uint32_t time = 0;
-	// Debug prints to stderr so simulator stdout remains clean for JSON outputs.
-	cerr << "EDACup minimal controller started" << endl;
-	cerr << "Waiting for messages..." << endl;
-
-	while (true)
-	{
-		try
-		{
-			string line;
-			if (!std::getline(cin, line)) {
-				// EOF or pipe closed: exit cleanly
-				cerr << "stdin closed, exiting." << endl;
-				break;
-			}
-
-			if (line.empty()) continue; // skip empty lines
-
-			// parse incoming json
-			json message = json::parse(line);
-			string type = message.value("type", "");
-			if (type == "start") {
-				isRunning = true;
-				cerr << "Received start" << endl;
-			}
-			else if (type == "stop") {
-				isRunning = false;
-				cerr << "Received stop" << endl;
-			}
-			else if (type == "state") {
-				// Only act when running.
-				if (!isRunning) continue;
-
-				// Convert JSON into our minimal GameState
-				GameState state = parseStateMessage(message);
-
-				/*RobotCommand bot1Cmd = moveToPosition(state.homeBot1, state.homeBot2.posX, state.homeBot2.posZ);
-				RobotCommand bot2Cmd = moveToPosition(state.homeBot2, state.homeBot1.posX, state.homeBot1.posZ);
-				//decideStrategy(state, bot1Cmd, bot2Cmd);
-
-				// Send commands back to simulator
-				sendCommands(bot1Cmd, bot2Cmd);*/
-				poseHomeBot1(-1.095, 0.79, 0);
-
-			}
-		}
-		catch (const std::exception& e) {
-			// Print errors to stderr (simulator ignores stderr).
-			cerr << "Error in main loop: " << e.what() << endl;
-		}
-	}
-
-	return 0;
+// Send commands to simulator
+void sendCommands(const RobotCommand& bot1Cmd, const RobotCommand& bot2Cmd) {
+    json message = createSetMessage(bot1Cmd, bot2Cmd);
+    cout << message.dump() << endl;
+    cout.flush();
 }
 
-json createSetMessage(const RobotCommand& bot1Cmd, const RobotCommand& bot2Cmd)
-{
-	json message =
-	{
-		{"type", "set"},
-		{"data", {
-			{"homeBot1", {
-				{"positionXZ", {bot1Cmd.targetX, bot1Cmd.targetZ}},
-				{"rotationY", bot1Cmd.targetRotY},
-				{"dribbler", bot1Cmd.dribbler},
-				{"kick", bot1Cmd.kick},
-				{"chip", bot1Cmd.chip}
-			}},
-			{"homeBot2", {
-				{"positionXZ", {bot2Cmd.targetX, bot2Cmd.targetZ}},
-				{"rotationY", bot2Cmd.targetRotY},
-				{"dribbler", bot2Cmd.dribbler},
-				{"kick", bot2Cmd.kick},
-				{"chip", bot2Cmd.chip}
-			}}
-		}}
-	};
+// Parse game state from JSON message
+GameState parseStateMessage(const json& message) {
+    GameState state;
 
-	return message;
+    if (!message.contains("data")) {
+        cerr << "Warning: Missing data field" << endl;
+        return state;
+    }
+
+    const json& data = message["data"];
+
+    // Helper function to read robot state
+    auto readRobot = [&](const json& obj, RobotState& rs) {
+        try {
+            if (obj.contains("position") && obj["position"].is_array() &&
+                obj["position"].size() >= 3) {
+                rs.posX = obj["position"][0];
+                rs.posY = obj["position"][1];
+                rs.posZ = obj["position"][2];
+            }
+
+            if (obj.contains("rotation") && obj["rotation"].is_array() &&
+                obj["rotation"].size() >= 3) {
+                rs.rotX = obj["rotation"][0];
+                rs.rotY = obj["rotation"][1];
+                rs.rotZ = obj["rotation"][2];
+            }
+
+            if (obj.contains("velocity") && obj["velocity"].is_array() &&
+                obj["velocity"].size() >= 3) {
+                rs.velX = obj["velocity"][0];
+                rs.velY = obj["velocity"][1];
+                rs.velZ = obj["velocity"][2];
+            }
+        }
+        catch (const exception& e) {
+            cerr << "Error reading robot state: " << e.what() << endl;
+        }
+        };
+
+    // Read all robots and ball
+    if (data.contains("homeBot1"))  readRobot(data["homeBot1"], state.homeBot1);
+    if (data.contains("homeBot2"))  readRobot(data["homeBot2"], state.homeBot2);
+    if (data.contains("rivalBot1")) readRobot(data["rivalBot1"], state.rivalBot1);
+    if (data.contains("rivalBot2")) readRobot(data["rivalBot2"], state.rivalBot2);
+    if (data.contains("ball"))      readRobot(data["ball"], state.ball);
+
+    return state;
 }
 
-void sendCommands(const RobotCommand& bot1Cmd, const RobotCommand& bot2Cmd)
-{
-	json message = createSetMessage(bot1Cmd, bot2Cmd);
+// ============================================================================
+// MAIN LOOP
+// ============================================================================
 
-	// Use cout for simulator communication (one line).
-	cout << message.dump() << endl;
-	cout.flush();
-}
+int main(int argc, char* argv[]) {
+    bool isRunning = false;
+    uint32_t frameCount = 0;
 
-GameState parseStateMessage(const json& message)
-{
-	GameState state; 
+    cerr << "=====================================" << endl;
+    cerr << "   EDACup 2025 Robot Controller" << endl;
+    cerr << "=====================================" << endl;
+    cerr << "Waiting for game messages..." << endl;
 
-	cerr << endl << message.dump() << endl;
-	// get data object, bail out early if missing
-	if (!message.contains("data")) return state;
-	const json& data = message["data"];
+    while (true) {
+        try {
+            string line;
+            if (!getline(cin, line)) {
+                cerr << "Input closed, exiting." << endl;
+                break;
+            }
 
-	auto readRobot = [&](const json& obj, RobotState& rs) {
-		// position: [x,y,z] if present
-		if (obj.contains("position") && obj["position"].is_array() && obj["position"].size() >= 3) {
-			rs.posX = obj["position"][0].get<float>();
-			rs.posY = obj["position"][1].get<float>();
-			rs.posZ = obj["position"][2].get<float>();
-		}
+            if (line.empty()) continue;
 
-		// rotation: [x,y,z]
-		if (obj.contains("rotation") && obj["rotation"].is_array() && obj["rotation"].size() >= 3) {
-			rs.rotX = obj["rotation"][0].get<float>();
-			rs.rotY = obj["rotation"][1].get<float>();
-			rs.rotZ = obj["rotation"][2].get<float>();
-		}
+            // Parse JSON message
+            json message = json::parse(line);
+            string type = message.value("type", "");
 
-		// velocity: [x,y,z]
-		if (obj.contains("velocity") && obj["velocity"].is_array() && obj["velocity"].size() >= 3) {
-			rs.velX = obj["velocity"][0].get<float>();
-			rs.velY = obj["velocity"][1].get<float>();
-			rs.velZ = obj["velocity"][2].get<float>();
-		}
+            if (type == "start") {
+                isRunning = true;
+                frameCount = 0;
+                cerr << ">>> GAME STARTED <<<" << endl;
+            }
+            else if (type == "stop") {
+                isRunning = false;
+                cerr << ">>> GAME STOPPED <<<" << endl;
+                cerr << "Frames processed: " << frameCount << endl;
+            }
+            else if (type == "state" && isRunning) {
+                frameCount++;
 
-		// angularVelocity: [x,y,z]
-		if (obj.contains("angularVelocity") && obj["angularVelocity"].is_array() && obj["angularVelocity"].size() >= 3) {
-			rs.angVelX = obj["angularVelocity"][0].get<float>();
-			rs.angVelY = obj["angularVelocity"][1].get<float>();
-			rs.angVelZ = obj["angularVelocity"][2].get<float>();
-		}
-		};
+                // Process game state and generate commands
+                GameState state = parseStateMessage(message);
+                RobotCommand bot1Cmd, bot2Cmd;
+                decideStrategy(state, bot1Cmd, bot2Cmd);
+                sendCommands(bot1Cmd, bot2Cmd);
 
-	// For each expected robot/ball key, check existence before parsing.
-	if (data.contains("homeBot1"))	readRobot(data["homeBot1"], state.homeBot1);
-	if (data.contains("homeBot2"))	readRobot(data["homeBot2"], state.homeBot2);
-	if (data.contains("rivalBot1")) readRobot(data["rivalBot1"], state.rivalBot1);
-	if (data.contains("rivalBot2")) readRobot(data["rivalBot2"], state.rivalBot2);
-	if (data.contains("ball"))      readRobot(data["ball"], state.ball);
+                // Status update every 100 frames
+                if (frameCount % 100 == 0) {
+                    cerr << "[Frame " << frameCount << "] Running" << endl;
+                }
+            }
+        }
+        catch (const exception& e) {
+            cerr << "Error: " << e.what() << endl;
+        }
+    }
 
-	cerr << "Parsed state: "
-		 << "HomeBot1(" << state.homeBot1.posX << "," << state.homeBot1.posZ << ") "
-		 << "HomeBot2(" << state.homeBot2.posX << "," << state.homeBot2.posZ << ") "
-		 << "RivalBot1(" << state.rivalBot1.posX << "," << state.rivalBot1.posZ << ") "
-		 << "RivalBot2(" << state.rivalBot2.posX << "," << state.rivalBot2.posZ << ") "
-		 << "Ball(" << state.ball.posX << "," << state.ball.posZ << ")"
-		<< "------------------------------------------------------------------------" << endl;
-
-	return state;
+    cerr << "Controller shutdown complete." << endl;
+    return 0;
 }

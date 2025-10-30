@@ -1,6 +1,6 @@
 /**
  * @file strategy.h
- * @brief Game strategy and decision-making functions
+ * @brief Game strategy and decision-making
  * @author Agustin Valenzuela,
  *         Alex Petersen,
  *         Dylan Frigerio,
@@ -14,23 +14,16 @@
 
 #include "robot.h"
 
- /**
-  * @brief Represents the complete game state
-  */
+ // Complete game state
 struct GameState {
-	RobotState homeBot1;     // First home robot
-	RobotState homeBot2;     // Second home robot
-	RobotState rivalBot1;    // First rival robot
-	RobotState rivalBot2;    // Second rival robot
-	RobotState ball;         // Ball state
+    RobotState homeBot1;     // First home robot
+    RobotState homeBot2;     // Second home robot
+    RobotState rivalBot1;    // First rival robot
+    RobotState rivalBot2;    // Second rival robot
+    RobotState ball;         // Ball state
 };
 
-/**
- * @brief Main strategy function - decides actions for both robots
- * @param state Current game state
- * @param bot1Cmd Output command for robot 1
- * @param bot2Cmd Output command for robot 2
- */
+// Main strategy function
 void decideStrategy(const GameState& state, RobotCommand& bot1Cmd, RobotCommand& bot2Cmd);
 
 #endif // STRATEGY_H
