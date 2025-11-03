@@ -166,13 +166,27 @@ RobotCommand Shooting::clearBall(const RobotState& robot, const RobotState& ball
 // POSITIONING ACTIONS
 // ============================================================================
 
+RobotCommand Positioning::holdPosition(const RobotState& robot) {
+    RobotCommand cmd;
+    cmd.targetX = robot.posX;
+    cmd.targetZ = robot.posZ;
+    cmd.targetRotY = robot.rotY;
+    return cmd;
+}
+
 RobotCommand Positioning::moveTo(const RobotState& robot, float targetX, float targetZ) {
     RobotCommand cmd;
     cmd.targetX = targetX;
     cmd.targetZ = targetZ;
-    cmd.targetRotY = angleTo(robot.posX, robot.posZ, targetX, targetZ);
-    cmd.dribbler = 1.0f;
-    cmd.kick = 0.0f;
-    cmd.chip = 0.0f;
+    // cmd.targetRotY = angleTo(robot.posX, robot.posZ, targetX, targetZ);
     return cmd;
 }
+
+RobotCommand Positioning::faceTowards(const RobotState& robot, float pointX, float pointZ) {
+    RobotCommand cmd;
+	cmd.targetX = robot.posX;
+	cmd.targetZ = robot.posZ;
+    cmd.targetRotY = angleTo(robot.posX, robot.posZ, pointX, pointZ);
+    return cmd;
+}
+
