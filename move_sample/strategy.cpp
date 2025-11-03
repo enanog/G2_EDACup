@@ -112,7 +112,7 @@ RobotCommand decideAttackerAction(const RobotState& robot, const RobotState& bal
     }
 
     std::cerr << "Has ball control" << std::endl;
-
+    
     // Shoot if close to opponent goal
     float distToGoal = distance(ball.posX, ball.posZ, RIGHT_GOAL_X, 0.0f);
     if (distToGoal < 1.5f) {
@@ -122,7 +122,7 @@ RobotCommand decideAttackerAction(const RobotState& robot, const RobotState& bal
             return shootResult.command;
         }
     }
-
+    
     // Otherwise dribble toward goal
     std::cerr << "Dribbling toward goal" << std::endl;
     return BallControl::dribbleTo(robot, ball, RIGHT_GOAL_X - 0.3f, 0.0f);

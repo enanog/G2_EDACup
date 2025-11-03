@@ -25,11 +25,14 @@ bool hasBallControl(const RobotState& robot, const RobotState& ball) {
 // Check if robot can kick the ball
 bool canKickBall(const RobotState& robot, const RobotState& ball) {
     float dist = distance(robot.posX, robot.posZ, ball.posX, ball.posZ);
-    if (dist > 0.15f) return false;
+    if (dist > BALL_CONTROL_DISTANCE) return false;
 
     float angleToBall = angleTo(robot.posX, robot.posZ, ball.posX, ball.posZ);
     float angleDiff = std::abs(angleDifference(robot.rotY, angleToBall));
-    return angleDiff < 30.0f * DEG_TO_RAD;
+    
+	std::cerr << "Angle Diff = " << angleDiff << std::endl;
+
+    return (angleDiff < 30.0f * DEG_TO_RAD);
 }
 
 // ============================================================================
@@ -110,6 +113,7 @@ ActionResult Shooting::shootAtGoal(const RobotState& robot, const RobotState& ba
         result.command.targetRotY = angle;
         result.command.dribbler = 0.8f;
         result.command.kick = 0.0f;
+		result.command.chip = 0.0f;
         result.description = "Positioning for shot";
         return result;
     }

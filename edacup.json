@@ -1,5 +1,5 @@
 {
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXAiOiJKV1QiLCJpc3MiOiJodHRwczovL3d3dy5vcGVucmVhbGl0eS5hcHAiLCJzdWIiOiJlZGFjdXAtZzJAb3BlbnJlYWxpdHkuYXBwIiwiZXhwIjoxNzc2Mjc0ODUwfQ.BQyTR01BvvkjgV8wVu9uAKrn_QflanE1j07iAji5SFs",
-  "team1Binary": "D:\\EDA\\G2_EDACup\\move_sample\\out\\build\\x64-Debug\\move_sample.exe",
+  "team1Binary": ".\\move_sample\\out\\build\\x64-Debug\\move_sample.exe",
   "team2Binary": ""
 }

@@ -80,7 +80,7 @@ GameState parseStateMessage(const json& message) {
             if (obj.contains("rotation") && obj["rotation"].is_array() &&
                 obj["rotation"].size() >= 3) {
                 rs.rotX = obj["rotation"][0];
-                rs.rotY = obj["rotation"][1];
+                rs.rotY = obj["rotation"][1] + M_PI;
                 rs.rotZ = obj["rotation"][2];
             }
 
@@ -102,6 +102,15 @@ GameState parseStateMessage(const json& message) {
     if (data.contains("rivalBot1")) readRobot(data["rivalBot1"], state.rivalBot1);
     if (data.contains("rivalBot2")) readRobot(data["rivalBot2"], state.rivalBot2);
     if (data.contains("ball"))      readRobot(data["ball"], state.ball);
+
+std:cerr << std::endl << "-------------------------------" << std::endl
+              << "Parsed GameState: " << std::endl
+              << "  HomeBot1pos(" << state.homeBot1.posX << ", " << state.homeBot1.posY << ", " << state.homeBot1.posZ << "), " << std::endl
+              << "  HomeBot1rot(" << state.homeBot1.rotX << ", " << state.homeBot1.rotY << ", " << state.homeBot1.rotZ << "), " << std::endl
+              << "  HomeBot2pos(" << state.homeBot2.posX << ", " << state.homeBot2.posY << ", " << state.homeBot2.posZ << "), " << std::endl
+              << "  HomeBot2rot(" << state.homeBot2.rotX << ", " << state.homeBot2.rotY << ", " << state.homeBot2.rotZ << "), " << std::endl
+              << "  Ball(" << state.ball.posX << ", " << state.ball.posZ << ")" << std::endl
+              << std::endl;
 
     return state;
 }
