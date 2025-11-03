@@ -15,6 +15,7 @@
 #include "constants.h"
 #include <iostream>
 #include <algorithm>
+#include <chrono>
 
  // ============================================================================
  // SIMPLE ROLE SYSTEM
@@ -149,9 +150,9 @@ RobotCommand decideDefenderAction(const RobotState& robot, const RobotState& bal
 
 void decideStrategy(const GameState& state, RobotCommand& bot1Cmd, RobotCommand& bot2Cmd) {
     // Update roles based on current game state
-    roleManager.updateRoles(state);
+    // roleManager.updateRoles(state);
 
-    const RoleConfig& bot1Config = roleManager.getBot1Config();
+    /*const RoleConfig& bot1Config = roleManager.getBot1Config();
     const RoleConfig& bot2Config = roleManager.getBot2Config();
 
     // Assign actions based on roles
@@ -167,5 +168,30 @@ void decideStrategy(const GameState& state, RobotCommand& bot1Cmd, RobotCommand&
     }
     else {
         bot2Cmd = decideDefenderAction(state.homeBot2, state.ball, bot2Config);
+    }*/
+	
+	bot2Cmd = Positioning::moveTo(state.homeBot2, state.homeBot2.posZ, state.homeBot2.posZ);
+	static char state_t = 0;
+    switch (state_t)
+    {
+        case 0:
+			std::cerr << "Moving to ball" << std::endl;
+            bot1Cmd = Positioning::moveTo(state.homeBot1, state.ball.posX-0.05f, state.ball.posZ + 0.05f    );
+            if (hasBallControl(state.homeBot1, state.ball)) state_t = 1;
+		    break;
+        case 1:
+			std::cerr << "Dribbling to goal" << std::endl;
+            bot1Cmd = BallControl::dribbleTo(state.homeBot1, state.ball, RIGHT_GOAL_X - 0.3f, 0.0f);
+			if (state.ball.posX >= RIGHT_GOAL_X - 0.3f) state_t = 2;
+            break;
+        case 2:
+            std::cerr << "Waiting" << std::endl;
+            bot1Cmd.dribbler = 0.0f;
+            std::cerr << "Kicking to goal" << std::endl;
+            bot1Cmd.chip = 0.5f;
+            
+			break;
+    default:
+        break;
     }
 }

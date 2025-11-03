@@ -75,7 +75,7 @@ RobotCommand BallControl::dribbleTo(const RobotState& robot, const RobotState& b
         dirZ /= len;
     }
 
-    const float STEP = 0.3f;
+    const float STEP = 0.03f;
     cmd.targetX = robot.posX + dirX * STEP;
     cmd.targetZ = robot.posZ + dirZ * STEP;
     cmd.targetRotY = angleTo(robot.posX, robot.posZ, targetX, targetZ);
@@ -171,7 +171,7 @@ RobotCommand Positioning::moveTo(const RobotState& robot, float targetX, float t
     cmd.targetX = targetX;
     cmd.targetZ = targetZ;
     cmd.targetRotY = angleTo(robot.posX, robot.posZ, targetX, targetZ);
-    cmd.dribbler = 0.0f;
+    cmd.dribbler = 1.0f;
     cmd.kick = 0.0f;
     cmd.chip = 0.0f;
     return cmd;
