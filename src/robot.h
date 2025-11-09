@@ -25,6 +25,10 @@ struct RobotState {
         velX(0), velY(0), velZ(0),
         angVelX(0), angVelY(0), angVelZ(0) {
     }
+
+    bool isOnField() const {
+        return posY >= 0.5f;
+    }
 };
 
 // Robot control commands
