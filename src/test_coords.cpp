@@ -78,7 +78,7 @@ enum TestMode {
 };
 
 // Current test mode (change this to test different behaviors)
-TestMode g_currentTest = TEST_AXIS_CROSS;
+TestMode g_currentTest = TEST_CHASE_BALL;
 
 // Test state
 bool g_isPlaying = false;

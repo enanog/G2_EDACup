@@ -1,11 +1,7 @@
 /**
  * @file actions.h
- * @brief High-level robot actions
- * @author Agustin Valenzuela,
- *         Alex Petersen,
- *         Dylan Frigerio,
- *         Enzo Fernandez Rosas
- *
+ * @brief High-level robot actions - SIMPLIFIED (Attacker/Defender only)
+ * @author Agustin Valenzuela, Alex Petersen, Dylan Frigerio, Enzo Fernandez Rosas
  * @copyright Copyright (c) 2025
  */
 
@@ -15,77 +11,69 @@
 #include "robot.h"
 #include "strategy.h"
 
- // Action result with success status and description
 struct ActionResult {
     bool success;
     const char* description;
 };
 
-// Ball control actions - modify command directly
+// Ball control actions
 namespace BallControl {
-    /**
-     * Intercept ball - move to ball position with dribbler
-     */
     void interceptBall(const RobotState& robot, const RobotState& ball,
         RobotCommand& cmd);
 
-    /**
-     * Chase ball - fast approach to ball
-     */
     void chaseBall(const RobotState& robot, const RobotState& ball,
         RobotCommand& cmd);
 
-    /**
-     * Dribble ball toward target position
-     */
     void dribbleTo(const RobotState& robot, const RobotState& ball,
         float targetX, float targetZ, RobotCommand& cmd);
+
+    /**
+     * Dribble toward goal with slow rotation for better control
+     */
+    void dribbleToGoal(const RobotState& robot, const RobotState& ball,
+        RobotCommand& cmd);
 }
 
-// Shooting actions - modify command directly
+// Shooting actions
 namespace Shooting {
-    /**
-     * Shoot at goal - returns success status
-     */
     ActionResult shootAtGoal(const RobotState& robot, const RobotState& ball,
         RobotCommand& cmd);
 
-    /**
-     * Clear ball away from goal
-     */
     void clearBall(const RobotState& robot, const RobotState& ball,
         RobotCommand& cmd);
 }
 
-// Positioning actions - modify command directly
+// Positioning actions
 namespace Positioning {
-    /**
-     * Hold current position
-     */
     void holdPosition(const RobotState& robot, RobotCommand& cmd);
 
-    /**
-     * Move to target position
-     */
     void moveTo(const RobotState& robot, float targetX, float targetZ,
         RobotCommand& cmd);
 
-    /**
-     * Face toward a point
-     */
     void faceTowards(const RobotState& robot, float pointX, float pointZ,
+        RobotCommand& cmd);
+
+    /**
+     * Move to position while facing a specific point
+     */
+    void moveToWhileFacing(const RobotState& robot,
+        float targetX, float targetZ,
+        float faceX, float faceZ,
         RobotCommand& cmd);
 }
 
 // Utility functions
-/**
- * Check if robot has control of the ball
- */
 bool hasBallControl(const RobotState& robot, const RobotState& ball);
+bool canKickBall(const RobotState& robot, const RobotState& ball);
 
 /**
- * Check if robot is in position to kick
+ * Check if position is inside a goal area
  */
-bool canKickBall(const RobotState& robot, const RobotState& ball);
+bool isInsideGoalArea(float x, float z);
+
+/**
+ * Clamp position to valid field boundaries (avoiding goal areas and edges)
+ */
+void clampToFieldBounds(float& x, float& z, bool avoidGoalAreas = true);
 
 #endif // ACTIONS_H
