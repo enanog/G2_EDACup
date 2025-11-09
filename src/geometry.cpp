@@ -1,99 +1,96 @@
-// ============================================================================
-// geometry.cpp
-// Implementation of geometric and mathematical utilities
-// ============================================================================
+﻿/**
+ * @file geometry.cpp
+ * @brief Implementation of geometric calculations
+ * @author Agustin Valenzuela,
+ *         Alex Petersen,
+ *         Dylan Frigerio,
+ *         Enzo Fernandez Rosas
+ *
+ * @copyright Copyright (c) 2025
+ */
 
 #include "geometry.h"
-#include <algorithm>
+#include "constants.h"
+#include <cmath>
 
-// Vec2 constructor
-Vec2::Vec2(double x_, double z_) : x(x_), z(z_) {}
-
-// Vector addition
-Vec2 Vec2::operator+(const Vec2& other) const {
-    return Vec2(x + other.x, z + other.z);
+ /**
+  * Calculate Euclidean distance between two points
+  */
+float distance(float x1, float z1, float x2, float z2)
+{
+    float dx = x2 - x1;
+    float dz = z2 - z1;
+    return std::sqrt(dx * dx + dz * dz);
 }
 
-// Vector subtraction
-Vec2 Vec2::operator-(const Vec2& other) const {
-    return Vec2(x - other.x, z - other.z);
+/**
+ * Calculate angle from one point to another
+ *
+ * IMPORTANT: In EDACup coordinate system:
+ * - rotY = 0 means robot faces +X direction (toward opponent goal)
+ * - We use atan2(dz, dx) to get proper angle
+ *
+ * The function adds M_PI because the simulator expects angles
+ * offset by 180 degrees from standard mathematical convention
+ */
+float angleTo(float fromX, float fromZ, float toX, float toZ)
+{
+    float dx = toX - fromX;
+    float dz = toZ - fromZ;
+
+    // Calculate angle in standard coordinates
+    // atan2(dz, dx) gives angle from +X axis
+    float angle = std::atan2(dx, dz) + M_PI;
+
+    // Normalize to [-PI, PI] range
+    return normalizeAngle(angle);
 }
 
-// Scalar multiplication
-Vec2 Vec2::operator*(double scalar) const {
-    return Vec2(x * scalar, z * scalar);
-}
-
-// Calculate vector magnitude (length)
-double Vec2::length() const {
-    return std::sqrt(x * x + z * z);
-}
-
-// Return normalized (unit) vector
-Vec2 Vec2::normalized() const {
-    double len = length();
-    // Avoid division by zero
-    if (len < 0.001) return Vec2(1, 0);
-    return Vec2(x / len, z / len);
-}
-
-// Dot product of two vectors
-double Vec2::dot(const Vec2& other) const {
-    return x * other.x + z * other.z;
-}
-
-// Calculate distance between two points
-double distance(Vec2 a, Vec2 b) {
-    return (b - a).length();
-}
-
-// Normalize angle to [-π, π] range for consistent angle representation
-double normalizeAngle(double angle) {
-    // Handle angles outside the standard range
-    while (angle > M_PI) angle -= 2.0 * M_PI;
-    while (angle < -M_PI) angle += 2.0 * M_PI;
+/**
+ * Normalize angle to [-PI, PI] range
+ */
+float normalizeAngle(float angle)
+{
+    while (angle > M_PI) angle -= 2.0f * M_PI;
+    while (angle < -M_PI) angle += 2.0f * M_PI;
     return angle;
 }
 
 /**
- * Get facing direction vector from rotation angle
- * In EDACup: rotY = 0 means facing +X axis
- *            rotY = π/2 means facing +Z axis
+ * Get facing direction vector from rotY angle
+ * rotY = 0 → faces +X (opponent goal direction)
+ * rotY = PI/2 → faces +Z
  */
-Vec2 getFacingVector(double rotY) {
-    return Vec2(std::cos(rotY), std::sin(rotY));
+Vec2 getFacingVector(float rotY) {
+    return Vec2(cos(rotY), sin(rotY));
 }
 
 /**
- * Calculate angle needed to face from one point to another
- * Uses atan2 to get angle from +X axis (since rotY=0 is +X direction)
+ * Calculate shortest angular difference between two angles
+ * Result is in [-PI, PI] range
  */
-double angleToPoint(Vec2 from, Vec2 to) {
-    double dx = to.x - from.x;
-    double dz = to.z - from.z;
-    // atan2(z, x) gives angle from +X axis in XZ plane
-    return std::atan2(dz, dx);
+float angleDifference(float angle1, float angle2)
+{
+    return normalizeAngle(angle2 - angle1);
 }
 
 /**
- * Smoothly rotate from current angle toward target angle
- * Prevents instant snapping by limiting rotation per frame
+ * Smooth rotation toward target angle
+ * maxDelta: maximum rotation per frame (radians)
  */
-double smoothRotation(double currentAngle, double targetAngle, double maxChange) {
-    // Calculate shortest angular distance
-    double diff = normalizeAngle(targetAngle - currentAngle);
-    // Clamp the change to maxChange
-    diff = std::max(-maxChange, std::min(maxChange, diff));
-    // Apply the limited rotation
-    return normalizeAngle(currentAngle + diff);
-}
+float smoothRotation(float currentAngle, float targetAngle, float maxDelta) {
+    float diff = angleDifference(currentAngle, targetAngle);
 
-// Linear interpolation between two values
-double lerp(double a, double b, double t) {
-    return a + (b - a) * t;
-}
+    // Clamp difference to maxDelta
+    if (std::abs(diff) <= maxDelta) {
+        return targetAngle;
+    }
 
-// Clamp value to specified range
-double clamp(double value, double minVal, double maxVal) {
-    return std::max(minVal, std::min(maxVal, value));
+    // Move toward target by maxDelta
+    if (diff > 0) {
+        return normalizeAngle(currentAngle + maxDelta);
+    }
+    else {
+        return normalizeAngle(currentAngle - maxDelta);
+    }
 }

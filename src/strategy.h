@@ -1,41 +1,48 @@
-// ============================================================================
-// strategy.h
-// High-level strategy and decision-making
-// ============================================================================
+/**
+ * @file strategy.h
+ * @brief Game strategy and decision-making
+ * @author Agustin Valenzuela,
+ *         Alex Petersen,
+ *         Dylan Frigerio,
+ *         Enzo Fernandez Rosas
+ *
+ * @copyright Copyright (c) 2025
+ */
 
 #ifndef STRATEGY_H
 #define STRATEGY_H
 
-#include "game_state.h"
-#include <nlohmann/json.hpp>
+#include <cstdint>
 
-using json = nlohmann::json;
+#include "robot.h"
 
-/**
- * Execute attacker (homeBot1) strategy
- * Chases ball, dribbles toward goal, shoots when aligned
- */
-void executeAttacker(const GameState& state, json& command);
+ // Complete game state with centralized command storage
+struct GameState {
+    // Robot and ball states (read from simulator)
+    RobotState homeBot1;     // First home robot
+    RobotState homeBot2;     // Second home robot
+    RobotState rivalBot1;    // First rival robot
+    RobotState rivalBot2;    // Second rival robot
+    RobotState ball;         // Ball state
 
-/**
- * Execute defender (homeBot2) strategy
- * Protects own goal, tracks ball, clears dangerous situations
- */
-void executeDefender(const GameState& state, json& command);
+    // Commands to be sent (written by strategy)
+    RobotCommand bot1Cmd;    // Command for homeBot1
+    RobotCommand bot2Cmd;    // Command for homeBot2
 
-/**
- * Helper: Calculate best shooting angle and check if aligned
- */
-bool isAlignedForShot(const Robot& robot, Vec2 ballPos, Vec2 goalPos, double& angleToGoal);
+    // Frame counter
+    uint32_t frameCount;
 
-/**
- * Helper: Determine if attacker should shoot now
- */
-bool shouldShoot(const Robot& robot, const Ball& ball, double alignmentAngle);
+    // Constructor
+    GameState() : frameCount(0) {}
 
-/**
- * Helper: Get defender home position based on ball location
- */
-Vec2 getDefenderPosition(const Ball& ball);
+    // Reset commands before new frame
+    void resetCommands() {
+        bot1Cmd.reset();
+        bot2Cmd.reset();
+    }
+};
+
+// Main strategy function - updates commands in GameState
+void decideStrategy(GameState& state);
 
 #endif // STRATEGY_H

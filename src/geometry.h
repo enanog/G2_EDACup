@@ -1,72 +1,58 @@
-// ============================================================================
-// geometry.h
-// Mathematical utilities for 2D vector operations and angle calculations
-// ============================================================================
+/**
+ * @file geometry.h
+ * @brief Geometric calculations and utilities
+ * @author Agustin Valenzuela,
+ *         Alex Petersen,
+ *         Dylan Frigerio,
+ *         Enzo Fernandez Rosas
+ *
+ * @copyright Copyright (c) 2025
+ */
 
 #ifndef GEOMETRY_H
 #define GEOMETRY_H
 
-#include <cmath>
-
-// Mathematical constant
-constexpr double M_PI = 3.14159265358979323846;
-
-/**
- * 2D Vector structure with common operations
- */
+ /**
+  * 2D Vector structure
+  */
 struct Vec2 {
-    double x, z;
-    
-    // Constructors
-    Vec2(double x_ = 0, double z_ = 0);
-    
-    // Vector arithmetic operators
-    Vec2 operator+(const Vec2& other) const;
-    Vec2 operator-(const Vec2& other) const;
-    Vec2 operator*(double scalar) const;
-    
-    // Vector operations
-    double length() const;           // Get magnitude of vector
-    Vec2 normalized() const;         // Get unit vector in same direction
-    double dot(const Vec2& other) const;  // Dot product
+    float x, z;
+
+    Vec2() : x(0), z(0) {}
+    Vec2(float x_, float z_) : x(x_), z(z_) {}
 };
 
 /**
- * Calculate Euclidean distance between two points
+ * Calculate distance between two points
  */
-double distance(Vec2 a, Vec2 b);
+float distance(float x1, float z1, float x2, float z2);
 
 /**
- * Normalize angle to [-π, π] range
+ * Calculate angle from one point to another
+ * Returns angle in radians [-PI, PI]
  */
-double normalizeAngle(double angle);
+float angleTo(float fromX, float fromZ, float toX, float toZ);
 
 /**
- * Calculate the facing direction vector from rotY angle
- * rotY = 0 → faces +X (right)
- * rotY = π/2 → faces +Z (forward)
+ * Normalize angle to [-PI, PI] range
  */
-Vec2 getFacingVector(double rotY);
+float normalizeAngle(float angle);
 
 /**
- * Calculate required rotY angle to face from 'from' point to 'to' point
+ * Calculate difference between two angles
+ * Returns shortest angular distance in [-PI, PI]
  */
-double angleToPoint(Vec2 from, Vec2 to);
+float angleDifference(float angle1, float angle2);
 
 /**
- * Smoothly interpolate from current angle to target angle
- * maxChange limits the rotation speed
+ * Get facing direction vector from rotation angle
  */
-double smoothRotation(double currentAngle, double targetAngle, double maxChange);
+Vec2 getFacingVector(float rotY);
 
 /**
- * Linear interpolation between two values
+ * Smooth rotation toward target angle
+ * maxDelta: maximum rotation change per frame
  */
-double lerp(double a, double b, double t);
-
-/**
- * Clamp value between min and max
- */
-double clamp(double value, double minVal, double maxVal);
+float smoothRotation(float currentAngle, float targetAngle, float maxDelta);
 
 #endif // GEOMETRY_H
