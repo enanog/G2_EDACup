@@ -18,25 +18,26 @@ find_package(nlohmann_json CONFIG REQUIRED)
 # ============================================================================
 
 # Archivos fuente
-set(STRATEGY_SOURCES
+set(MAIN_SOURCES
     main.cpp
     geometry.cpp
-    actions.cpp
-    strategy.cpp
+    robot.cpp
+    gamestate.cpp
+    ball.cpp
 )
 
 # Archivos header (para detección de cambios)
-set(STRATEGY_HEADERS
+set(MAIN_HEADERS
     robot.h
     geometry.h
-    actions.h
-    strategy.h
+    gamestate.h
     constants.h
+    ball.cpp
 )
 
-add_executable(strategy ${STRATEGY_SOURCES} ${STRATEGY_HEADERS})
+add_executable(main ${MAIN_SOURCES} ${MAIN_HEADERS})
 
-target_link_libraries(strategy PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
 
 # ============================================================================
 # Ejecutable de prueba (Coordinate test)
@@ -50,7 +51,7 @@ target_link_libraries(test_coords PRIVATE nlohmann_json::nlohmann_json)
 # Configuración de salida
 # ============================================================================
 
-set_target_properties(strategy test_coords
+set_target_properties(main test_coords
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
@@ -59,7 +60,7 @@ set_target_properties(strategy test_coords
 # Warnings del compilador
 # ============================================================================
 
-target_compile_options(strategy PRIVATE
+target_compile_options(main PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
 )
