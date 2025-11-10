@@ -5,18 +5,21 @@
  * @copyright Copyright (c) 2025
  */
 
-#include "Robot.h"
-#include "Ball.h"
+#include "robot.h"
+
 #include <iostream>
+
+#include "ball.h"
+#include "geometry.h"
 
 // ========================================================================
 // CONFIGURATION CONSTANTS
 // ========================================================================
 
-const float SMOOTH_ROTATION_SPEED = 0.05f;
-const float DRIBBLE_ROTATION_SPEED = 0.04f;
-const float MOVEMENT_STEP = 0.05f;
-const float DRIBBLE_STEP = 0.04f;
+const float SMOOTH_ROTATION_SPEED = 0.08f;
+const float DRIBBLE_ROTATION_SPEED = 0.08f;
+const float MOVEMENT_STEP = 0.09f;
+const float DRIBBLE_STEP = 0.09f;
 
 // Field boundaries with safety margin
 const float FIELD_X_MIN = -FIELD_HALF_LENGTH + 0.105f;
@@ -24,61 +27,50 @@ const float FIELD_X_MAX = FIELD_HALF_LENGTH - 0.105f;
 const float FIELD_Z_MIN = -FIELD_HALF_WIDTH + 0.105f;
 const float FIELD_Z_MAX = FIELD_HALF_WIDTH - 0.105f;
 
- // ============================================================================
- // CONSTRUCTORS
- // ============================================================================
+// ============================================================================
+// CONSTRUCTORS
+// ============================================================================
 
 Robot::Robot()
-    : posX_(0), posY_(0), posZ_(0),
-    rotX_(0), rotY_(0), rotZ_(0),
-    velX_(0), velY_(0), velZ_(0),
-    angVelX_(0), angVelY_(0), angVelZ_(0),
-    targetX_(0), targetZ_(0), targetRotY_(0),
-    dribbler_(0), kick_(0), chip_(0) {
+    : posX_(0),
+      posY_(0),
+      posZ_(0),
+      rotX_(0),
+      rotY_(0),
+      rotZ_(0),
+      velX_(0),
+      velY_(0),
+      velZ_(0),
+      angVelX_(0),
+      angVelY_(0),
+      angVelZ_(0),
+      targetX_(0),
+      targetZ_(0),
+      targetRotY_(0),
+      dribbler_(0),
+      kick_(0),
+      chip_(0) {
 }
 
 Robot::Robot(float x, float y, float z)
-    : posX_(x), posY_(y), posZ_(z),
-    rotX_(0), rotY_(0), rotZ_(0),
-    velX_(0), velY_(0), velZ_(0),
-    angVelX_(0), angVelY_(0), angVelZ_(0),
-    targetX_(x), targetZ_(z), targetRotY_(0),
-    dribbler_(0), kick_(0), chip_(0) {
-}
-
-// ============================================================================
-// PRIVATE UTILITY METHODS
-// ============================================================================
-
-float Robot::angleTo(float toX, float toZ) const {
-    float angle = std::atan2(toX - posX_, toZ - posZ_) + M_PI;
-    // Normalize to [-PI, PI]
-    while (angle > M_PI) angle -= 2.0f * M_PI;
-    while (angle < -M_PI) angle += 2.0f * M_PI;
-    return angle;
-}
-
-float Robot::angleDifference(float angle1, float angle2) const {
-    float diff = angle2 - angle1;
-    // Normalize to [-PI, PI]
-    while (diff > M_PI) diff -= 2.0f * M_PI;
-    while (diff < -M_PI) diff += 2.0f * M_PI;
-    return diff;
-}
-
-float Robot::smoothRotation(float currentAngle, float targetAngle, float speed) const {
-    float diff = angleDifference(currentAngle, targetAngle);
-
-    if (std::abs(diff) < speed) {
-        return targetAngle;
-    }
-
-    return currentAngle + (diff > 0 ? speed : -speed);
-}
-
-void Robot::clampToFieldBounds(float& x, float& z) const {
-    x = std::clamp(x, FIELD_X_MIN, FIELD_X_MAX);
-    z = std::clamp(z, FIELD_Z_MIN, FIELD_Z_MAX);
+    : posX_(x),
+      posY_(y),
+      posZ_(z),
+      rotX_(0),
+      rotY_(0),
+      rotZ_(0),
+      velX_(0),
+      velY_(0),
+      velZ_(0),
+      angVelX_(0),
+      angVelY_(0),
+      angVelZ_(0),
+      targetX_(x),
+      targetZ_(z),
+      targetRotY_(0),
+      dribbler_(0),
+      kick_(0),
+      chip_(0) {
 }
 
 // ============================================================================
@@ -103,20 +95,21 @@ bool Robot::hasBallControl(const Ball& ball) const {
 }
 
 bool Robot::canKickBall(const Ball& ball) const {
-    if (!hasBallControl(ball)) return false;
+    if (!hasBallControl(ball))
+        return false;
 
-    float angleToBall = angleTo(ball.getPosX(), ball.getPosZ());
+    float angleToBall = angleTo(posX_, posZ_, ball.getPosX(), ball.getPosZ());
     float angleDiff = std::abs(angleDifference(rotY_, angleToBall));
 
     return (angleDiff < 30.0f * DEG_TO_RAD);
 }
 
-bool Robot::hasClearPath(float targetX, float targetZ,
-    const Robot& opp1, const Robot& opp2) const {
+bool Robot::hasClearPath(float targetX, float targetZ, const Robot& opp1, const Robot& opp2) const {
     const float BLOCKING_DISTANCE = 0.25f;
 
     float lineLen = distanceTo(targetX, targetZ);
-    if (lineLen < 0.01f) return true;
+    if (lineLen < 0.01f)
+        return true;
 
     // Direction vector
     float dirX = (targetX - posX_) / lineLen;
@@ -124,7 +117,8 @@ bool Robot::hasClearPath(float targetX, float targetZ,
 
     // Lambda: calculate distance from opponent to path line
     auto distToLine = [&](const Robot& opp) -> float {
-        if (!opp.isOnField()) return 999.0f;
+        if (!opp.isOnField())
+            return 999.0f;
 
         float dx = opp.posX_ - posX_;
         float dz = opp.posZ_ - posZ_;
@@ -137,12 +131,17 @@ bool Robot::hasClearPath(float targetX, float targetZ,
         float distX = nearX - opp.posX_;
         float distZ = nearZ - opp.posZ_;
         return std::sqrt(distX * distX + distZ * distZ);
-        };
+    };
 
     float dist1 = distToLine(opp1);
     float dist2 = distToLine(opp2);
 
     return (dist1 > BLOCKING_DISTANCE && dist2 > BLOCKING_DISTANCE);
+}
+
+void Robot::clampToFieldBounds(float& x, float& z) const {
+    x = std::clamp(x, FIELD_X_MIN, FIELD_X_MAX);
+    z = std::clamp(z, FIELD_Z_MIN, FIELD_Z_MAX);
 }
 
 // ============================================================================
@@ -164,27 +163,25 @@ void Robot::holdPosition() {
 
 void Robot::moveTo(float targetX, float targetZ) {
     clampToFieldBounds(targetX, targetZ);
-
     targetX_ = targetX;
     targetZ_ = targetZ;
-    targetRotY_ = angleTo(targetX, targetZ);
+    // targetRotY_ = angleTo(posX_, posZ_, targetX, targetZ);
     resetControls();
 }
 
 void Robot::faceTowards(float pointX, float pointZ) {
-    targetX_ = posX_;
-    targetZ_ = posZ_;
-    targetRotY_ = angleTo(pointX, pointZ);
-    resetControls();
+    // targetX_ = posX_;
+    // targetZ_ = posZ_;
+    targetRotY_ = angleTo(posX_, posZ_, pointX, pointZ);
+    // resetControls();
 }
 
-void Robot::moveToWhileFacing(float targetX, float targetZ,
-    float faceX, float faceZ) {
+void Robot::moveToWhileFacing(float targetX, float targetZ, float faceX, float faceZ) {
     clampToFieldBounds(targetX, targetZ);
 
     targetX_ = targetX;
     targetZ_ = targetZ;
-    targetRotY_ = angleTo(faceX, faceZ);
+    targetRotY_ = angleTo(posX_, posZ_, faceX, faceZ);
     resetControls();
 }
 
@@ -201,13 +198,13 @@ void Robot::interceptBall(const Ball& ball) {
 
     targetX_ = predictX;
     targetZ_ = predictZ;
-    targetRotY_ = angleTo(predictX, predictZ);
+    targetRotY_ = angleTo(posX_, posZ_, predictX, predictZ);
     dribbler_ = 0.8f;
     kick_ = 0.0f;
     chip_ = 0.0f;
 
-    std::cerr << "  Action: Intercepting ball at (" << predictX << ", "
-        << predictZ << ")" << std::endl;
+    std::cerr << "  Action: Intercepting ball at (" << predictX << ", " << predictZ << ")"
+              << std::endl;
 }
 
 void Robot::chaseBall(const Ball& ball) {
@@ -218,15 +215,15 @@ void Robot::chaseBall(const Ball& ball) {
 
     targetX_ = targetX;
     targetZ_ = targetZ;
-    targetRotY_ = angleTo(targetX, targetZ);
-    dribbler_ = 0.9f;
+    targetRotY_ = angleTo(posX_, posZ_, targetX, targetZ);
+    dribbler_ = 1.0f;
     kick_ = 0.0f;
     chip_ = 0.0f;
 
     std::cerr << "  Action: Chasing ball" << std::endl;
 }
 
-void Robot::dribbleTo(const Ball& ball, float targetX, float targetZ) {
+void Robot::dribbleTo(float targetX, float targetZ) {
     // Calculate direction to target
     float dirX = targetX - posX_;
     float dirZ = targetZ - posZ_;
@@ -246,19 +243,14 @@ void Robot::dribbleTo(const Ball& ball, float targetX, float targetZ) {
     targetX_ = nextX;
     targetZ_ = nextZ;
 
-    // Rotate slowly toward target
-    float targetAngle = angleTo(targetX, targetZ);
-    targetRotY_ = smoothRotation(rotY_, targetAngle, DRIBBLE_ROTATION_SPEED);
-
     dribbler_ = 1.0f;
     kick_ = 0.0f;
     chip_ = 0.0f;
 
-    std::cerr << "  Action: Dribbling to (" << targetX << ", " << targetZ
-        << ")" << std::endl;
+    std::cerr << "  Action: Dribbling to (" << targetX << ", " << targetZ << ")" << std::endl;
 }
 
-void Robot::dribbleToGoal(const Ball& ball) {
+void Robot::dribbleToGoal() {
     // Direction toward opponent's goal
     const float GOAL_APPROACH_X = RIGHT_GOAL_X - 0.5f;
     float dirX = GOAL_APPROACH_X - posX_;
@@ -280,20 +272,19 @@ void Robot::dribbleToGoal(const Ball& ball) {
     targetZ_ = nextZ;
 
     // Slowly rotate to face goal center
-    float angleToGoal = angleTo(RIGHT_GOAL_X, 0.0f);
+    float angleToGoal = angleTo(posX_, posZ_, RIGHT_GOAL_X, 0.0f);
     targetRotY_ = smoothRotation(rotY_, angleToGoal, DRIBBLE_ROTATION_SPEED);
 
     dribbler_ = 1.0f;
     kick_ = 0.0f;
     chip_ = 0.0f;
 
-    std::cerr << "  Action: Dribbling to goal - Angle: "
-        << (rotY_ * 180.0f / M_PI) << "° → "
-        << (angleToGoal * 180.0f / M_PI) << "°" << std::endl;
+    std::cerr << "  Action: Dribbling to goal - Angle: " << (rotY_ * 180.0f / M_PI)
+              << (angleToGoal * 180.0f / M_PI) << std::endl;
 }
 
 bool Robot::shootAtGoal(const Ball& ball) {
-    float angleToGoal = angleTo(RIGHT_GOAL_X, 0.0f);
+    float angleToGoal = angleTo(posX_, posZ_, RIGHT_GOAL_X, 0.0f);
 
     // Step 1: Position behind ball if needed
     if (!canKickBall(ball)) {
@@ -322,8 +313,8 @@ bool Robot::shootAtGoal(const Ball& ball) {
         kick_ = 0.0f;
         chip_ = 0.0f;
 
-        std::cerr << "  Action: Aligning for shot (diff: "
-            << (angleDiff * 180.0f / M_PI) << "°)" << std::endl;
+        std::cerr << "  Action: Aligning for shot (diff: " << (angleDiff * 180.0f / M_PI) << ")"
+                  << std::endl;
         return false;
     }
 
@@ -338,7 +329,7 @@ bool Robot::shootAtGoal(const Ball& ball) {
     kick_ = power;
     chip_ = 0.0f;
 
-    std::cerr << "  Action: ⚽ SHOOTING! Power: " << power << std::endl;
+    std::cerr << "  Action: SHOOTING! Power: " << power << std::endl;
     return true;
 }
 
@@ -347,7 +338,7 @@ void Robot::clearBall(const Ball& ball) {
     float targetX = RIGHT_GOAL_X;
     float targetZ = (ball.getPosZ() > 0) ? -FIELD_HALF_WIDTH : FIELD_HALF_WIDTH;
 
-    float angleToTarget = angleTo(targetX, targetZ);
+    float angleToTarget = angleTo(posX_, posZ_, targetX, targetZ);
 
     if (canKickBall(ball)) {
         // Execute clear
@@ -359,8 +350,7 @@ void Robot::clearBall(const Ball& ball) {
         chip_ = 0.0f;
 
         std::cerr << "  Action: CLEARING ball!" << std::endl;
-    }
-    else {
+    } else {
         // Position for clear
         const float OFFSET = 0.15f;
         float clearDirX = std::cos(angleToTarget);

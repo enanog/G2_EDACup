@@ -8,11 +8,12 @@
 #ifndef ROBOT_H
 #define ROBOT_H
 
-#include "constants.h"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 
- // Forward declaration
+#include "constants.h"
+
+// Forward declaration
 class Ball;
 
 /**
@@ -26,220 +27,300 @@ class Ball;
  * - Tactical queries (distance, line of sight)
  */
 class Robot {
-private:
-    // ========================================================================
-    // STATE VARIABLES
-    // ========================================================================
+  private:
+	// ========================================================================
+	// STATE VARIABLES
+	// ========================================================================
 
-    // Position
-    float posX_, posY_, posZ_;
+	// Position
+	float posX_, posY_, posZ_;
 
-    // Rotation (radians)
-    float rotX_, rotY_, rotZ_;
+	// Rotation (radians)
+	float rotX_, rotY_, rotZ_;
 
-    // Linear velocity
-    float velX_, velY_, velZ_;
+	// Linear velocity
+	float velX_, velY_, velZ_;
 
-    // Angular velocity
-    float angVelX_, angVelY_, angVelZ_;
+	// Angular velocity
+	float angVelX_, angVelY_, angVelZ_;
 
-    // ========================================================================
-    // CONTROL OUTPUTS
-    // ========================================================================
+	// ========================================================================
+	// CONTROL OUTPUTS
+	// ========================================================================
 
-    float targetX_, targetZ_;      // Target movement position
-    float targetRotY_;             // Target rotation angle
-    float dribbler_;               // Dribbler power [0-1]
-    float kick_;                   // Kick power [0-1]
-    float chip_;                   // Chip kick power [0-1]
+	float targetX_, targetZ_;  // Target movement position
+	float targetRotY_;         // Target rotation angle
+	float dribbler_;           // Dribbler power [0-1]
+	float kick_;               // Kick power [0-1]
+	float chip_;               // Chip kick power [0-1]
 
-    // ========================================================================
-    // PRIVATE UTILITY METHODS
-    // ========================================================================
+	// ========================================================================
+	// PRIVATE UTILITY METHODS
+	// ========================================================================
 
-    /**
-     * @brief Calculate angle to target point
-     */
-    float angleTo(float toX, float toZ) const;
+  public:
+	// ========================================================================
+	// CONSTRUCTORS
+	// ========================================================================
 
-    /**
-     * @brief Calculate angular difference between two angles
-     */
-    float angleDifference(float angle1, float angle2) const;
+	Robot();
+	Robot(float x, float y, float z);
 
-    /**
-     * @brief Smoothly interpolate toward target angle
-     */
-    float smoothRotation(float currentAngle, float targetAngle, float speed) const;
+	// ========================================================================
+	// STATE GETTERS
+	// ========================================================================
 
-    /**
-     * @brief Clamp coordinates to valid field boundaries
-     */
-    void clampToFieldBounds(float& x, float& z) const;
+	float getPosX() const {
+		return posX_;
+	}
+	float getPosY() const {
+		return posY_;
+	}
+	float getPosZ() const {
+		return posZ_;
+	}
 
-public:
-    // ========================================================================
-    // CONSTRUCTORS
-    // ========================================================================
+	float getRotX() const {
+		return rotX_;
+	}
+	float getRotY() const {
+		return rotY_;
+	}
+	float getRotZ() const {
+		return rotZ_;
+	}
 
-    Robot();
-    Robot(float x, float y, float z);
+	float getVelX() const {
+		return velX_;
+	}
+	float getVelY() const {
+		return velY_;
+	}
+	float getVelZ() const {
+		return velZ_;
+	}
 
-    // ========================================================================
-    // STATE GETTERS
-    // ========================================================================
+	float getAngVelX() const {
+		return angVelX_;
+	}
+	float getAngVelY() const {
+		return angVelY_;
+	}
+	float getAngVelZ() const {
+		return angVelZ_;
+	}
 
-    float getPosX() const { return posX_; }
-    float getPosY() const { return posY_; }
-    float getPosZ() const { return posZ_; }
+	void clampToFieldBounds(float& x, float& z) const;
 
-    float getRotX() const { return rotX_; }
-    float getRotY() const { return rotY_; }
-    float getRotZ() const { return rotZ_; }
+		// ========================================================================
+		// CONTROL GETTERS
+		// ========================================================================
 
-    float getVelX() const { return velX_; }
-    float getVelY() const { return velY_; }
-    float getVelZ() const { return velZ_; }
+		float getTargetX() const {
+		return targetX_;
+	}
+	float getTargetZ() const {
+		return targetZ_;
+	}
+	float getTargetRotY() const {
+		return targetRotY_;
+	}
+	float getDribbler() const {
+		return dribbler_;
+	}
+	float getKick() const {
+		return kick_;
+	}
+	float getChip() const {
+		return chip_;
+	}
 
-    float getAngVelX() const { return angVelX_; }
-    float getAngVelY() const { return angVelY_; }
-    float getAngVelZ() const { return angVelZ_; }
+	// ========================================================================
+	// STATE SETTERS
+	// ========================================================================
 
-    // ========================================================================
-    // CONTROL GETTERS
-    // ========================================================================
+	void setPosX(float x) {
+		posX_ = x;
+	}
+	void setPosY(float y) {
+		posY_ = y;
+	}
+	void setPosZ(float z) {
+		posZ_ = z;
+	}
+	void setPosition(float x, float y, float z) {
+		posX_ = x;
+		posY_ = y;
+		posZ_ = z;
+	}
 
-    float getTargetX() const { return targetX_; }
-    float getTargetZ() const { return targetZ_; }
-    float getTargetRotY() const { return targetRotY_; }
-    float getDribbler() const { return dribbler_; }
-    float getKick() const { return kick_; }
-    float getChip() const { return chip_; }
+	void setRotX(float x) {
+		rotX_ = x;
+	}
+	void setRotY(float y) {
+		rotY_ = y;
+	}
+	void setRotZ(float z) {
+		rotZ_ = z;
+	}
+	void setRotation(float x, float y, float z) {
+		rotX_ = x;
+		rotY_ = y;
+		rotZ_ = z;
+	}
 
-    // ========================================================================
-    // STATE SETTERS
-    // ========================================================================
+	void setVelX(float x) {
+		velX_ = x;
+	}
+	void setVelY(float y) {
+		velY_ = y;
+	}
+	void setVelZ(float z) {
+		velZ_ = z;
+	}
+	void setVelocity(float x, float y, float z) {
+		velX_ = x;
+		velY_ = y;
+		velZ_ = z;
+	}
 
-    void setPosX(float x) { posX_ = x; }
-    void setPosY(float y) { posY_ = y; }
-    void setPosZ(float z) { posZ_ = z; }
-    void setPosition(float x, float y, float z) { posX_ = x; posY_ = y; posZ_ = z; }
+	void setAngVelX(float x) {
+		angVelX_ = x;
+	}
+	void setAngVelY(float y) {
+		angVelY_ = y;
+	}
+	void setAngVelZ(float z) {
+		angVelZ_ = z;
+	}
+	void setAngularVelocity(float x, float y, float z) {
+		angVelX_ = x;
+		angVelY_ = y;
+		angVelZ_ = z;
+	}
 
-    void setRotX(float x) { rotX_ = x; }
-    void setRotY(float y) { rotY_ = y; }
-    void setRotZ(float z) { rotZ_ = z; }
-    void setRotation(float x, float y, float z) { rotX_ = x; rotY_ = y; rotZ_ = z; }
+	void setKick (float value){
+		kick_ = value;
+	}
+	void setDribbler (float value){
+		dribbler_ = value;
+	}
+	void setChip (float value){
+		chip_ = value;
+	}
+	void setTargetRotY(float angle) {
+		targetRotY_ = angle;
+	}
+	void setTargetPosition(float x, float z) {
+		targetX_ = x;
+		targetZ_ = z;
+	}
+	void setTargetX(float x) {
+		targetX_ = x;
+	}
+	void setTargetZ(float z) {
+		targetZ_ = z;
+	}
 
-    void setVelX(float x) { velX_ = x; }
-    void setVelY(float y) { velY_ = y; }
-    void setVelZ(float z) { velZ_ = z; }
-    void setVelocity(float x, float y, float z) { velX_ = x; velY_ = y; velZ_ = z; }
+	// ========================================================================
+	// STATE QUERIES
+	// ========================================================================
 
-    void setAngVelX(float x) { angVelX_ = x; }
-    void setAngVelY(float y) { angVelY_ = y; }
-    void setAngVelZ(float z) { angVelZ_ = z; }
-    void setAngularVelocity(float x, float y, float z) {
-        angVelX_ = x; angVelY_ = y; angVelZ_ = z;
-    }
+	/**
+	 * @brief Check if robot is on the field (Y >= 0.5)
+	 */
+	bool isOnField() const {
+		return posY_ >= 0.5f;
+	}
 
-    // ========================================================================
-    // STATE QUERIES
-    // ========================================================================
+	/**
+	 * @brief Calculate distance to another robot
+	 */
+	float distanceTo(const Robot& other) const;
 
-    /**
-     * @brief Check if robot is on the field (Y >= 0.5)
-     */
-    bool isOnField() const { return posY_ >= 0.5f; }
+	/**
+	 * @brief Calculate distance to a point
+	 */
+	float distanceTo(float x, float z) const;
 
-    /**
-     * @brief Calculate distance to another robot
-     */
-    float distanceTo(const Robot& other) const;
+	/**
+	 * @brief Check if robot has control of the ball
+	 */
+	bool hasBallControl(const Ball& ball) const;
 
-    /**
-     * @brief Calculate distance to a point
-     */
-    float distanceTo(float x, float z) const;
+	/**
+	 * @brief Check if robot can kick the ball (proper position and angle)
+	 */
+	bool canKickBall(const Ball& ball) const;
 
-    /**
-     * @brief Check if robot has control of the ball
-     */
-    bool hasBallControl(const Ball& ball) const;
+	/**
+	 * @brief Check if there's a clear path to target (no opponents blocking)
+	 */
+	bool hasClearPath(float targetX, float targetZ, const Robot& opp1, const Robot& opp2) const;
 
-    /**
-     * @brief Check if robot can kick the ball (proper position and angle)
-     */
-    bool canKickBall(const Ball& ball) const;
+	// ========================================================================
+	// BASIC CONTROL ACTIONS
+	// ========================================================================
 
-    /**
-     * @brief Check if there's a clear path to target (no opponents blocking)
-     */
-    bool hasClearPath(float targetX, float targetZ,
-        const Robot& opp1, const Robot& opp2) const;
+	/**
+	 * @brief Reset all control outputs to zero
+	 */
+	void resetControls();
 
-    // ========================================================================
-    // BASIC CONTROL ACTIONS
-    // ========================================================================
+	/**
+	 * @brief Hold current position
+	 */
+	void holdPosition();
 
-    /**
-     * @brief Reset all control outputs to zero
-     */
-    void resetControls();
+	/**
+	 * @brief Move to target position
+	 */
+	void moveTo(float targetX, float targetZ);
 
-    /**
-     * @brief Hold current position
-     */
-    void holdPosition();
+	/**
+	 * @brief Rotate to face a target point
+	 */
+	void faceTowards(float pointX, float pointZ);
 
-    /**
-     * @brief Move to target position
-     */
-    void moveTo(float targetX, float targetZ);
+	/**
+	 * @brief Move to position while facing a specific point
+	 */
+	void moveToWhileFacing(float targetX, float targetZ, float faceX, float faceZ);
 
-    /**
-     * @brief Rotate to face a target point
-     */
-    void faceTowards(float pointX, float pointZ);
+	// ========================================================================
+	// BALL INTERACTION ACTIONS
+	// ========================================================================
 
-    /**
-     * @brief Move to position while facing a specific point
-     */
-    void moveToWhileFacing(float targetX, float targetZ, float faceX, float faceZ);
+	/**
+	 * @brief Intercept moving ball (predicts position)
+	 */
+	void interceptBall(const Ball& ball);
 
-    // ========================================================================
-    // BALL INTERACTION ACTIONS
-    // ========================================================================
+	/**
+	 * @brief Chase ball to gain control
+	 */
+	void chaseBall(const Ball& ball);
 
-    /**
-     * @brief Intercept moving ball (predicts position)
-     */
-    void interceptBall(const Ball& ball);
+	/**
+	 * @brief Dribble ball toward target position
+	 */
+	void dribbleTo(float targetX, float targetZ);
 
-    /**
-     * @brief Chase ball to gain control
-     */
-    void chaseBall(const Ball& ball);
+	/**
+	 * @brief Dribble ball toward opponent's goal
+	 */
+	void dribbleToGoal();
 
-    /**
-     * @brief Dribble ball toward target position
-     */
-    void dribbleTo(const Ball& ball, float targetX, float targetZ);
+	/**
+	 * @brief Shoot ball at goal
+	 * @return True if shot was executed, false if still positioning
+	 */
+	bool shootAtGoal(const Ball& ball);
 
-    /**
-     * @brief Dribble ball toward opponent's goal
-     */
-    void dribbleToGoal(const Ball& ball);
-
-    /**
-     * @brief Shoot ball at goal
-     * @return True if shot was executed, false if still positioning
-     */
-    bool shootAtGoal(const Ball& ball);
-
-    /**
-     * @brief Clear ball away from goal (defensive)
-     */
-    void clearBall(const Ball& ball);
+	/**
+	 * @brief Clear ball away from goal (defensive)
+	 */
+	void clearBall(const Ball& ball);
 };
 
-#endif // ROBOT_H
+#endif  // ROBOT_H

@@ -10,14 +10,16 @@
  */
 
 #include "geometry.h"
-#include "constants.h"
+
 #include <cmath>
 
- /**
-  * Calculate Euclidean distance between two points
-  */
-float distance(float x1, float z1, float x2, float z2)
-{
+#include "constants.h"
+#include <iostream>
+
+/**
+ * Calculate Euclidean distance between two points
+ */
+float distance(float x1, float z1, float x2, float z2) {
     float dx = x2 - x1;
     float dz = z2 - z1;
     return std::sqrt(dx * dx + dz * dz);
@@ -33,8 +35,7 @@ float distance(float x1, float z1, float x2, float z2)
  * The function adds M_PI because the simulator expects angles
  * offset by 180 degrees from standard mathematical convention
  */
-float angleTo(float fromX, float fromZ, float toX, float toZ)
-{
+float angleTo(float fromX, float fromZ, float toX, float toZ) {
     float dx = toX - fromX;
     float dz = toZ - fromZ;
 
@@ -49,10 +50,11 @@ float angleTo(float fromX, float fromZ, float toX, float toZ)
 /**
  * Normalize angle to [-PI, PI] range
  */
-float normalizeAngle(float angle)
-{
-    while (angle > M_PI) angle -= 2.0f * M_PI;
-    while (angle < -M_PI) angle += 2.0f * M_PI;
+float normalizeAngle(float angle) {
+    while (angle > M_PI)
+        angle -= 2.0f * M_PI;
+    while (angle < -M_PI)
+        angle += 2.0f * M_PI;
     return angle;
 }
 
@@ -69,8 +71,7 @@ Vec2 getFacingVector(float rotY) {
  * Calculate shortest angular difference between two angles
  * Result is in [-PI, PI] range
  */
-float angleDifference(float angle1, float angle2)
-{
+float angleDifference(float angle1, float angle2) {
     return normalizeAngle(angle2 - angle1);
 }
 
@@ -83,14 +84,14 @@ float smoothRotation(float currentAngle, float targetAngle, float maxDelta) {
 
     // Clamp difference to maxDelta
     if (std::abs(diff) <= maxDelta) {
-        return targetAngle;
+        std::cerr << "clamped difference" << std::endl;
+		return targetAngle;
     }
 
     // Move toward target by maxDelta
     if (diff > 0) {
         return normalizeAngle(currentAngle + maxDelta);
-    }
-    else {
+    } else {
         return normalizeAngle(currentAngle - maxDelta);
     }
 }

@@ -12,14 +12,14 @@
 #ifndef GEOMETRY_H
 #define GEOMETRY_H
 
- /**
-  * 2D Vector structure
-  */
+/**
+ * 2D Vector structure
+ */
 struct Vec2 {
-    float x, z;
+		float x, z;
 
-    Vec2() : x(0), z(0) {}
-    Vec2(float x_, float z_) : x(x_), z(z_) {}
+		Vec2() : x(0), z(0) {}
+		Vec2(float x_, float z_) : x(x_), z(z_) {}
 };
 
 /**

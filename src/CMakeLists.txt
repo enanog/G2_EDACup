@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.25)
 project(EDACup2025 LANGUAGES CXX)
 
-# Configuración del estándar C++
+# Configuraciï¿½n del estï¿½ndar C++
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Flags de optimización
+# Flags de optimizaciï¿½n
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 
@@ -24,15 +24,17 @@ set(MAIN_SOURCES
     robot.cpp
     gamestate.cpp
     ball.cpp
+    field.cpp
 )
 
-# Archivos header (para detección de cambios)
+# Archivos header (para detecciï¿½n de cambios)
 set(MAIN_HEADERS
     robot.h
     geometry.h
     gamestate.h
     constants.h
-    ball.cpp
+    ball.h
+    field.h
 )
 
 add_executable(main ${MAIN_SOURCES} ${MAIN_HEADERS})
@@ -43,12 +45,30 @@ target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
 # Ejecutable de prueba (Coordinate test)
 # ============================================================================
 
-add_executable(test_coords test_coords.cpp)
+# Archivos fuente
+set(TEST_SOURCES
+    test_coords.cpp
+    geometry.cpp
+    robot.cpp
+    gamestate.cpp
+    ball.cpp
+)
+
+# Archivos header (para detecciï¿½n de cambios)
+set(TEST_HEADERS
+    robot.h
+    geometry.h
+    gamestate.h
+    constants.h
+    ball.cpp
+)
+
+add_executable(test_coords ${MAIN_SOURCES} ${MAIN_HEADERS})
 
 target_link_libraries(test_coords PRIVATE nlohmann_json::nlohmann_json)
 
 # ============================================================================
-# Configuración de salida
+# Configuraciï¿½n de salida
 # ============================================================================
 
 set_target_properties(main test_coords
@@ -71,7 +91,7 @@ target_compile_options(test_coords PRIVATE
 )
 
 # ============================================================================
-# Información de compilación
+# Informaciï¿½n de compilaciï¿½n
 # ============================================================================
 
 message(STATUS "Project: ${PROJECT_NAME}")
@@ -79,3 +99,8 @@ message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Strategy sources: ${STRATEGY_SOURCES}")
 message(STATUS "Strategy headers: ${STRATEGY_HEADERS}")
+
+
+# Threads
+find_package(Threads REQUIRED)
+target_link_libraries(main PRIVATE Threads::Threads)
