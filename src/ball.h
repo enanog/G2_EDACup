@@ -184,6 +184,8 @@ class Ball {
      * @return Distance in meters
      */
     float distanceTo(const class Robot& robot) const;
+
+    bool isOnField() const;
 };
 
 #endif  // BALL_H

@@ -199,18 +199,9 @@ Player GameState::whoHasBallControl() const {
 // INTERACTIONS
 // ========================================================================
 
-Player GameState::whoHasBallControl() const {
-    for (int i = 0; i < PLAYER_COUNT; ++i) {
-        if (playerList_[i].hasBallControl(ball_)) {
-            return (Player)i;  // Returns Player enum value
-        }
-    }
-    return NONE;  // No one has control
-}
-
-int8_t GameState::quickPass() {
-    static uint8_t state = 0;
-    static float factor = 0.0f;
+int8_t GameState::quickPass(){
+    uint8_t state = 0;
+    float factor = 0.0f;
     Player passer = whoHasBallControl();
     if (passer == NONE || passer > HOMEBOT_2) {
         std::cerr << "No one has ball control, cannot pass." << std::endl;
@@ -234,12 +225,12 @@ int8_t GameState::quickPass() {
 
     if (std::fabs((angle = normalizeAngle(
                        angleDifference(passerBot.getRotY(), receiverBot.getRotY()) - M_PI))) >
-        0.11f) {
+        0.15f) {
         if (passerBot.getAngVelY() < 0 && std::fabs(angle) < 0.4f && state == 0) {
-            factor = -0.20f;
+            factor = -0.25f;
             state = 1;
         } else if (passerBot.getAngVelY() > 0 && std::fabs(angle) < 0.4f && state == 0) {
-            factor = 0.16f;
+            factor = 0.25f;
             state = 1;
         }
         // Rotate towards receiver
@@ -263,7 +254,7 @@ int8_t GameState::quickPass() {
     } else {
         // Calculate kick power based on distance
         float dist = passerBot.distanceTo(receiverBot);
-        float kickPower = std::clamp(dist / MAX_PASS_DISTANCE, 0.1f, 0.8f);
+        float kickPower = std::clamp(dist / MAX_PASS_DISTANCE, 0.3f, 0.8f);
 
         passerBot.setDribbler(0.0f);   // Disable dribbler for pass
         passerBot.setKick(kickPower);  // Disable dribbler for pass
@@ -306,133 +297,12 @@ int8_t GameState::quickChip() {
 
     if (std::fabs((angle = normalizeAngle(
                        angleDifference(passerBot.getRotY(), receiverBot.getRotY()) - M_PI))) >
-        0.11f) {
+        0.15f) {
         if (passerBot.getAngVelY() < 0 && std::fabs(angle) < 0.4f && state == 0) {
-            factor = -0.2f;
+            factor = -0.25f;
             state = 1;
         } else if (passerBot.getAngVelY() > 0 && std::fabs(angle) < 0.4f && state == 0) {
-            factor = 0.2f;
-            state = 1;
-        }
-        // Rotate towards receiver
-        passerBot.setDribbler(1.0f);
-        receiverBot.setDribbler(1.0f);
-        passerBot.setTargetRotY(factor + smoothRotation(passerBot.getRotY(),
-                                                        angleTo(passerBot.getPosX(),
-                                                                passerBot.getPosZ(),
-                                                                receiverBot.getPosX(),
-                                                                receiverBot.getPosZ()),
-                                                        0.60f));
-
-        // passerBot.faceTowards(receiverBot.getPosX(), receiverBot.getPosZ());
-        receiverBot.faceTowards(passerBot.getPosX(), passerBot.getPosZ());
-        std::cerr << "passer angle" << passerBot.getRotY() << std::endl;
-        std::cerr << "passer rotational velocity" << passerBot.getAngVelY() << std::endl;
-        std::cerr << "receiver angle" << receiverBot.getRotY() << std::endl;
-        std::cerr << "difference angle" << angle << std::endl;
-        std::cerr << "Aligning for pass..." << std::endl;
-        return 0;
-    } else {
-        // Calculate kick power based on distance
-        float dist = passerBot.distanceTo(receiverBot);
-        float kickPower = std::clamp(0.9f * dist / MAX_PASS_DISTANCE, 0.1f, 0.8f);
-
-        passerBot.setChip(0.0f);       // Disable dribbler for pass
-        passerBot.setKick(kickPower);  // Disable dribbler for pass
-
-        std::cerr << "Pass distance " << dist << std::endl;
-
-        // Execute pass (this would need to be integrated into the control flow)
-        std::cerr << "Quick pass from Bot" << (passer == HOMEBOT_1 ? "1" : "2") << " to Bot"
-                  << (receiver == HOMEBOT_1 ? "1" : "2") << " (power: " << kickPower << ")"
-                  << std::endl;
-        state = 0;
-        factor = 0;
-        return 1;
-    }
-}
-
-Robot& receiverBot = playerList_[receiver];
-float angle;
-
-if (std::fabs((angle = normalizeAngle(angleDifference(passerBot.getRotY(), receiverBot.getRotY()) - M_PI))) > 0.11f) {
-    if (passerBot.getAngVelY() < 0 && std::fabs(angle) < 0.4f && state == 0) {
-        factor = -0.20f;
-        state = 1;
-    } else if (passerBot.getAngVelY() > 0 && std::fabs(angle) < 0.4f && state == 0) {
-        factor = 0.16f;
-        state = 1;
-    }
-    // Rotate towards receiver
-    passerBot.setDribbler(1.0f);
-    receiverBot.setDribbler(1.0f);
-    passerBot.setTargetRotY(factor + smoothRotation(passerBot.getRotY(),
-                                                    angleTo(passerBot.getPosX(),
-                                                            passerBot.getPosZ(),
-                                                            receiverBot.getPosX(),
-                                                            receiverBot.getPosZ()),
-                                                    0.60f));
-
-    // passerBot.faceTowards(receiverBot.getPosX(), receiverBot.getPosZ());
-    receiverBot.faceTowards(passerBot.getPosX(), passerBot.getPosZ());
-    std::cerr << "passer angle" << passerBot.getRotY() << std::endl;
-    std::cerr << "passer rotational velocity" << passerBot.getAngVelY() << std::endl;
-    std::cerr << "receiver angle" << receiverBot.getRotY() << std::endl;
-    std::cerr << "difference angle" << angle << std::endl;
-    std::cerr << "Aligning for pass..." << std::endl;
-    return 0;
-} else {
-    // Calculate kick power based on distance
-    float dist = passerBot.distanceTo(receiverBot);
-    float kickPower = std::clamp(dist / MAX_PASS_DISTANCE, 0.1f, 0.8f);
-
-    passerBot.setDribbler(0.0f);   // Disable dribbler for pass
-    passerBot.setKick(kickPower);  // Disable dribbler for pass
-
-    std::cerr << "Pass distance " << dist << std::endl;
-
-    // Execute pass (this would need to be integrated into the control flow)
-    std::cerr << "Quick pass from Bot" << (passer == HOMEBOT_1 ? "1" : "2") << " to Bot"
-              << (receiver == HOMEBOT_1 ? "1" : "2") << " (power: " << kickPower << ")"
-              << std::endl;
-    state = 0;
-    factor = 0;
-    return 1;
-}
-}
-
-int8_t GameState::quickChip() {
-    static uint8_t state = 0;
-    static float factor = 0.0f;
-    Player passer = whoHasBallControl();
-    if (passer == NONE || passer > HOMEBOT_2) {
-        std::cerr << "No one has ball control, cannot pass." << std::endl;
-        state = 0;
-        factor = 0;
-        return -1;
-    }
-    Player receiver = (passer == HOMEBOT_1) ? HOMEBOT_2 : HOMEBOT_1;
-
-    if (!playerList_[receiver].isOnField()) {
-        std::cerr << "Receiver is off field" << std::endl;
-        state = 0;
-        factor = 0;
-        return -1;
-    }
-
-    // Simple pass implementation
-    Robot& passerBot = playerList_[passer];
-    Robot& receiverBot = playerList_[receiver];
-    float angle;
-
-    if (std::fabs((angle = normalizeAngle(
-                       angleDifference(passerBot.getRotY(), receiverBot.getRotY()) - M_PI))) >
-        0.11f) {
-        if (passerBot.getAngVelY() < 0 && std::fabs(angle) < 0.4f && state == 0) {
-            factor = -0.2f;
-            state = 1;
-        } else if (passerBot.getAngVelY() > 0 && std::fabs(angle) < 0.4f && state == 0) {
-            factor = 0.2f;
+            factor = 0.25f;
             state = 1;
         }
         // Rotate towards receiver

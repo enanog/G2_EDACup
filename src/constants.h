@@ -32,4 +32,8 @@ const float GOAL_HALF_WIDTH = 0.30f;
 // Robot and ball parameters
 const float ROBOT_DIAMETER = 0.180f;
 const float BALL_CONTROL_DISTANCE = 0.12f;
+
+const float PENALTY_AREA_DEPTH = 0.25f;
+const float PENALTY_AREA_HALF_WIDTH = 0.40f;
+
 #endif // CONSTANTS_H

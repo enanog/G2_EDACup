@@ -19,7 +19,8 @@
 // CONSTRUCTOR
 // ============================================================================
 
-StrategyManager::StrategyManager() : currentRoles_() {}
+StrategyManager::StrategyManager() : currentRoles_() {
+}
 
 void StrategyManager::reset() {
     currentRoles_ = RoleAssignment();
@@ -39,6 +40,10 @@ Strategies StrategyManager::determineStrategy(const GameState& state) const {
     bool bot1Active = bot1.isOnField();
     bool bot2Active = bot2.isOnField();
 
+    if (!ball.isOnField()) {
+        return Strategies::CAMPING;
+    }
+
     // Handle off-field scenarios
     if (!bot1Active && !bot2Active)
         return Strategies::NO_STRATEGY;
@@ -46,31 +51,31 @@ Strategies StrategyManager::determineStrategy(const GameState& state) const {
     if (!bot1Active || !bot2Active)
         return Strategies::OFFIELD_STRATEGY;
 
-    bool bot1HasBall = bot1.hasBallControl(ball);
-    bool bot2HasBall = bot2.hasBallControl(ball);
-    bool anyBotHasBall = bot1HasBall || bot2HasBall;
+    Player robotWithBall = state.whoHasBallControl();
+    bool alliesHaveBall = (robotWithBall == HOMEBOT_1 || robotWithBall == HOMEBOT_2);
+    bool rivalsHaveBall = (robotWithBall == RIVALBOT_1 || robotWithBall == RIVALBOT_2);
+
+    // Immediate camping in nearest neutral point if ball is stuck
+    if (fieldMap.isBallStucked())
+        return Strategies::CAMPING;
+
+    float ballX = ball.getPosX();
 
     // Against one or no opponents - simplified strategy
     if (fieldMap.activeOpponents <= 1) {
-        if (anyBotHasBall)
+        if (!rivalsHaveBall || alliesHaveBall || fieldMap.activeOpponents == 0)
             return Strategies::OFFENSIVE;
         else
             return Strategies::DEFENSIVE;
     }
 
-    // Priority 1: Immediate camping in nearest neutral point if ball is stuck
-    if (fieldMap.isBallStuck())
-		return Strategies::CAMPING;
-
-    float ballX = ball.getPosX();
-
-    // Priority 2: Defend if ball is near our goal and we don't have control
-    if (ballX < 0.0f && !anyBotHasBall) {
+    // Defend if ball is near our goal and we don't have control
+    if (ballX < 0.0f && !alliesHaveBall && rivalsHaveBall) {
         return Strategies::DEFENSIVE;
     }
 
-    // Priority 3: Attack if ball is near opponent's goal and we have control
-    if (ballX > 0.0f && anyBotHasBall) {
+    // Attack if ball is near opponent's goal and we have control
+    if (ballX > 0.0f && alliesHaveBall && !rivalsHaveBall) {
         return Strategies::OFFENSIVE;
     }
 
@@ -88,16 +93,13 @@ void StrategyManager::assignRoles(Strategies strategy, const GameState& state) {
     const Ball& ball = state.getBall();
 
     bool bot1Active = bot1.isOnField();
-    bool bot2Active = bot2.isOnField();
 
-    // Calculate distances to ball
     float ballX = ball.getPosX();
-	float ballZ = ball.getPosZ();
+    float ballZ = ball.getPosZ();
+
     float dist1 = bot1.distanceTo(ballX, ballZ);
     float dist2 = bot2.distanceTo(ballX, ballZ);
 
-    bool bot1HasBall = bot1.hasBallControl(ball);
-    bool bot2HasBall = bot2.hasBallControl(ball);
     bool bot1Closer = dist1 < dist2;
 
     // Assign roles based on strategy
@@ -142,7 +144,7 @@ void StrategyManager::assignRoles(Strategies strategy, const GameState& state) {
 
         case Strategies::OFFENSIVE:
             // One support, one striker (priority to ball holder)
-            if (bot1HasBall || (bot1Closer && !bot2HasBall)) {
+            if (bot1.getPosX() > bot2.getPosX()) {
                 currentRoles_.bot1Role = Roles::STRIKER;
                 currentRoles_.bot2Role = Roles::SUPPORT;
             } else {
@@ -150,8 +152,7 @@ void StrategyManager::assignRoles(Strategies strategy, const GameState& state) {
                 currentRoles_.bot2Role = Roles::STRIKER;
             }
             break;
-        default:
-            std::cerr << "Unknown strategy, defaults to BALANCED." << std::endl;
+
         case Strategies::BALANCED:
             // One defender, one attacker
             if (bot1Closer) {
@@ -162,6 +163,9 @@ void StrategyManager::assignRoles(Strategies strategy, const GameState& state) {
                 currentRoles_.bot2Role = Roles::ATTACKER;
             }
             break;
+
+        default:
+            std::cerr << "Unknown strategy." << std::endl;
     }
 }
 
@@ -169,9 +173,7 @@ void StrategyManager::assignRoles(Strategies strategy, const GameState& state) {
 // ROLE BEHAVIORS - Detailed implementation of each role's actions
 // ============================================================================
 
-void StrategyManager::executeInterceptor(Robot& bot, const Robot& teammate, const Ball& ball,
-                                        const FieldMap& fieldMap, const Robot& rival1,
-                                        const Robot& rival2, bool isBot1) const {
+void StrategyManager::executeInterceptor(Robot& bot, const Ball& ball) const {
     std::cerr << ">> INTERCEPTOR" << std::endl;
 
     // If ball is acquired, strategy will re-evaluate next cycle
@@ -182,53 +184,39 @@ void StrategyManager::executeInterceptor(Robot& bot, const Robot& teammate, cons
     }
 
     // Without ball possession - pursue while avoiding collisions
-    std::cerr << "  Chasing ball - collision avoidance active" << std::endl;
+    std::cerr << "  Chasing ball  " << std::endl;
 
-    float targetX = fieldMap.predictedBallX;
-    float targetZ = fieldMap.predictedBallZ;
+    float targetX = ball.getPosX() + ball.getVelX() * 0.15f;
+    float targetZ = ball.getPosZ() + ball.getVelZ() * 0.15f;
 
-    // Avoid collision with teammate
-    float distToTeammate = bot.distanceTo(teammate);
-    if (distToTeammate < 0.16f) {
-        std::cerr << "  Too close to teammate - adjusting path" << std::endl;
-        // Adjust position laterally to avoid collision
+    bot.setDribbler(1.0f);
+    bot.setKick(0.0f);
+    bot.setChip(0.0f);
+    bot.faceTowards(ball.getPosX(), ball.getPosZ());
 
-        targetZ += (bot.getPosZ() > teammate.getPosZ()) ? 0.15f : -0.15f;
+    if (bot.distanceTo(targetX, targetZ) < 0.1f) {
+        bot.holdPosition();
+        return;
     }
-
-    // Avoid collision with opponents
-    if (rival1.isOnField()) {
-        float distToRival1 = bot.distanceTo(rival1);
-        if (distToRival1 < 0.3f) {
-            std::cerr << "  Avoiding opponent collision" << std::endl;
-            targetX += 0.15f;  // Adjust forward to go around
-        }
-    }
-
     bot.moveTo(targetX, targetZ);
 }
 
-void StrategyManager::executeDefender(Robot& bot, const Robot& teammate, const Ball& ball,
-                                     const FieldMap& fieldMap) const {
+void StrategyManager::executeDefender(Robot& bot,
+                                      const Ball& ball,
+                                      const FieldMap& fieldMap) const {
     std::cerr << ">> DEFENDER" << std::endl;
 
     float ballDistToGoal = fieldMap.ballDistToOwnGoal;
-    float botDistToBall = bot.distanceTo(ball);
+    float botDistToBall = bot.distanceTo(ball.getPosX(), ball.getPosZ());
 
     // Level 1: DANGER - Ball very close to goal
-    if (ballDistToGoal < 0.5f) {
+    if (ballDistToGoal < 0.4f) {
         std::cerr << "  DANGER! Ball very close to goal" << std::endl;
 
-        if (botDistToBall < 0.35f) {
-            if (bot.hasBallControl(ball)) {
-                std::cerr << "  Ball controlled - maintaining possession" << std::endl;
-                bot.holdPosition();
-                return;
-            } else {
-                std::cerr << "  Clearing ball away from goal" << std::endl;
-                bot.clearBall(ball);
-                return;
-            }
+        if (botDistToBall < 0.12f) {
+            std::cerr << "  Clearing ball away from goal" << std::endl;
+            bot.clearBall(ball);
+            return;
         } else {
             std::cerr << "  Moving to intercept ball" << std::endl;
             bot.chaseBall(ball);
@@ -237,7 +225,7 @@ void StrategyManager::executeDefender(Robot& bot, const Robot& teammate, const B
     }
 
     // Level 2: ALERT - Ball in danger zone
-    if (ballDistToGoal < 0.8f) {
+    if (ballDistToGoal < 0.6f) {
         std::cerr << "  Ball in danger zone - taking defensive position" << std::endl;
 
         float defX = (ball.getPosX() + LEFT_GOAL_X) * 0.6f;
@@ -260,31 +248,26 @@ void StrategyManager::executeDefender(Robot& bot, const Robot& teammate, const B
     bot.moveToWhileFacing(guardX, guardZ, ball.getPosX(), ball.getPosZ());
 }
 
-void StrategyManager::executeSupport(Robot& bot, const Robot& teammate, const Ball& ball,
-                                    const FieldMap& fieldMap, const Robot& rival1,
-                                    const Robot& rival2) const {
+void StrategyManager::executeSupport(GameState& gamestate_g,
+                                     Robot& bot,
+                                     const Robot& teammate,
+                                     const Ball& ball,
+                                     const FieldMap& fieldMap,
+                                     const Robot& rival1,
+                                     const Robot& rival2) const {
     std::cerr << ">> SUPPORT" << std::endl;
 
-    if (!bot.hasBallControl(ball)) {
+    if (!bot.hasBallControl(ball) && !teammate.hasBallControl(ball)) {
         std::cerr << "  No ball possession - positioning for support" << std::endl;
 
-        float supportX = ball.getPosX() - 0.3f;
-        float supportZ = ball.getPosZ() + (ball.getPosZ() > 0 ? -0.4f : 0.4f);
-
-        supportX = std::clamp(supportX, -FIELD_HALF_LENGTH + 0.3f, FIELD_HALF_LENGTH - 0.5f);
-        supportZ = std::clamp(supportZ, -FIELD_HALF_WIDTH + 0.3f, FIELD_HALF_WIDTH - 0.3f);
+        float supportX = ball.getPosX() - 0.45f;
+        float supportZ = ball.getPosZ() + (ball.getPosZ() > 0 ? -0.3f : 0.3f);
 
         bot.moveTo(supportX, supportZ);
         return;
     }
 
     std::cerr << "  Ball possessed - searching for STRIKER" << std::endl;
-
-    if (!teammate.isOnField()) {
-        std::cerr << "  No teammate available - advancing with ball" << std::endl;
-        bot.dribbleToGoal();
-        return;
-    }
 
     // Calculate pass quality to striker
     float passQuality = fieldMap.calculatePassQuality(bot, teammate, rival1, rival2);
@@ -293,17 +276,7 @@ void StrategyManager::executeSupport(Robot& bot, const Robot& teammate, const Ba
 
     if (passQuality > 0.35f) {
         std::cerr << "  EXECUTING PASS to STRIKER" << std::endl;
-
-        float dx = teammate.getPosX() - bot.getPosX();
-        float dz = teammate.getPosZ() - bot.getPosZ();
-        float angle = std::atan2(dz, dx);
-
-        bot.setTargetAngle(angle);
-
-        float dist = bot.distanceTo(teammate);
-        float kickPower = std::min(1.0f, dist * 0.8f);
-        bot.setKickX(kickPower);
-
+        gamestate_g.quickPass();
         return;
     }
 
@@ -311,8 +284,7 @@ void StrategyManager::executeSupport(Robot& bot, const Robot& teammate, const Ba
     bot.dribbleToGoal();
 }
 
-void StrategyManager::executeStriker(Robot& bot, const Robot& teammate, const Ball& ball,
-                                    const FieldMap& fieldMap, const Robot& rival1) const {
+void StrategyManager::executeStriker(Robot& bot, const Robot& teammate, const Ball& ball) const {
     std::cerr << ">> STRIKER" << std::endl;
 
     if (bot.hasBallControl(ball)) {
@@ -320,7 +292,7 @@ void StrategyManager::executeStriker(Robot& bot, const Robot& teammate, const Ba
 
         float distToGoal = ball.distanceTo(RIGHT_GOAL_X, 0.0f);
 
-        if (distToGoal < 0.7f) {
+        if (distToGoal < 0.6f) {
             std::cerr << "  In shooting range - TAKING SHOT" << std::endl;
             bot.shootAtGoal(ball);
         } else {
@@ -330,38 +302,24 @@ void StrategyManager::executeStriker(Robot& bot, const Robot& teammate, const Ba
         return;
     }
 
+    if (bot.getPosX() > teammate.getPosX()) {
+        bot.chaseBall(ball);
+        return;
+    }
+
     std::cerr << "  Positioning for effective pass reception" << std::endl;
 
     float ballX = ball.getPosX();
     float ballZ = ball.getPosZ();
 
-    float idealX = std::max(ballX + 0.5f, 0.3f);
-    float idealZ = 0.0f;
+    float targetX = std::max(ballX + 0.4f, 0.6f);
+    float targetZ = ballZ * 0.2f;
 
-    // Avoid opponent penalty area
-    if (fieldMap.inOppPenaltyArea(idealX, idealZ)) {
-        idealX = fieldMap.oppPenaltyMinX - 0.15f;
-    }
-
-    // Adjust position based on opponent locations
-    if (rival1.isOnField()) {
-        float rival1X = rival1.getPosX();
-        float rival1Z = rival1.getPosZ();
-
-        if (std::abs(rival1X - idealX) < 0.3f && std::abs(rival1Z) < 0.3f) {
-            idealZ = (ballZ > 0) ? 0.4f : -0.4f;
-        }
-    }
-
-    idealX = std::clamp(idealX, -FIELD_HALF_LENGTH + 0.5f, FIELD_HALF_LENGTH - 0.3f);
-    idealZ = std::clamp(idealZ, -FIELD_HALF_WIDTH + 0.3f, FIELD_HALF_WIDTH - 0.3f);
-
-    std::cerr << "  Target position: (" << idealX << ", " << idealZ << ")" << std::endl;
-    bot.moveToWhileFacing(idealX, idealZ, ball.getPosX(), ball.getPosZ());
+    std::cerr << "  Target position: (" << targetX << ", " << targetZ << ")" << std::endl;
+    bot.moveToWhileFacing(targetX, targetZ, ball.getPosX(), ball.getPosZ());
 }
 
-void StrategyManager::executeAttacker(Robot& bot, const Robot& teammate, const Ball& ball,
-                                     const FieldMap& fieldMap) const {
+void StrategyManager::executeAttacker(Robot& bot, const Robot& teammate, const Ball& ball) const {
     std::cerr << ">> ATTACKER" << std::endl;
 
     bool weHaveBall = bot.hasBallControl(ball) || teammate.hasBallControl(ball);
@@ -374,7 +332,7 @@ void StrategyManager::executeAttacker(Robot& bot, const Robot& teammate, const B
 
             float distToGoal = ball.distanceTo(RIGHT_GOAL_X, 0.0f);
 
-            if (distToGoal < 0.6f) {
+            if (distToGoal < 0.45f) {
                 std::cerr << "  Close to goal - SHOOTING" << std::endl;
                 bot.shootAtGoal(ball);
             } else {
@@ -384,13 +342,11 @@ void StrategyManager::executeAttacker(Robot& bot, const Robot& teammate, const B
         } else {
             std::cerr << "  Teammate has ball - supporting attack" << std::endl;
 
-            float attackX = teammate.getPosX() + 0.4f;
-            float attackZ = (teammate.getPosZ() > 0) ? -0.3f : 0.3f;
-
-            attackX = std::clamp(attackX, 0.0f, FIELD_HALF_LENGTH - 0.3f);
-            attackZ = std::clamp(attackZ, -FIELD_HALF_WIDTH + 0.3f, FIELD_HALF_WIDTH - 0.3f);
+            float attackX = teammate.getPosX() + 0.25f;
+            float attackZ = (teammate.getPosZ() > 0) ? -0.2f : 0.2f;
 
             bot.moveTo(attackX, attackZ);
+            bot.faceTowards(ball.getPosX(), ball.getPosZ());
         }
         return;
     }
@@ -398,9 +354,10 @@ void StrategyManager::executeAttacker(Robot& bot, const Robot& teammate, const B
     std::cerr << "  No possession - aggressive pressing" << std::endl;
 
     float ballX = ball.getPosX();
-    float distToBall = bot.distanceTo(ball);
+    float ballZ = ball.getPosZ();
+    float distToBall = bot.distanceTo(ballX, ballZ);
 
-    if (distToBall < 0.5f) {
+    if (distToBall < 0.4f) {
         std::cerr << "  Close to ball - chasing directly" << std::endl;
         bot.chaseBall(ball);
         return;
@@ -409,33 +366,19 @@ void StrategyManager::executeAttacker(Robot& bot, const Robot& teammate, const B
     float pressX = std::max(ballX, 0.0f) + 0.2f;
     float pressZ = ball.getPosZ() * 0.7f;
 
-    pressX = std::clamp(pressX, 0.0f, FIELD_HALF_LENGTH - 0.3f);
-    pressZ = std::clamp(pressZ, -FIELD_HALF_WIDTH + 0.3f, FIELD_HALF_WIDTH - 0.3f);
-
     std::cerr << "  Pressing position: (" << pressX << ", " << pressZ << ")" << std::endl;
     bot.moveToWhileFacing(pressX, pressZ, ball.getPosX(), ball.getPosZ());
 }
 
-void StrategyManager::executeCamper(Robot& bot, const Robot& teammate, const Ball& ball) const {
+void StrategyManager::executeCamper(Robot& bot) const {
     std::cerr << ">> CAMPER" << std::endl;
 
-    float campX = ball.getPosX() * 0.7f;
-    float campZ = ball.getPosZ() * 0.5f;
-
-    float distToBall = bot.distanceTo(ball);
-
-    if (distToBall < 0.35f) {
-        std::cerr << "  Ball nearby - engaging" << std::endl;
-        bot.chaseBall(ball);
-        return;
-    }
+    float campX = -0.15f;
+    float campZ = 0;
 
     std::cerr << "  Maintaining camp position" << std::endl;
 
-    campX = std::clamp(campX, -0.6f, 0.6f);
-    campZ = std::clamp(campZ, -FIELD_HALF_WIDTH + 0.3f, FIELD_HALF_WIDTH - 0.3f);
-
-    bot.moveToWhileFacing(campX, campZ, ball.getPosX(), ball.getPosZ());
+    bot.moveToWhileFacing(campX, campZ, 0.0f, 0.0f);
 }
 
 void StrategyManager::executeOffField(Robot& bot) const {
@@ -467,11 +410,8 @@ void StrategyManager::update(GameState& state) {
         case Strategies::OFFENSIVE:
             std::cerr << "OFFENSIVE";
             break;
-        case Strategies::DEFENSIVE_CAMPING:
+        case Strategies::CAMPING:
             std::cerr << "DEF_CAMPING";
-            break;
-        case Strategies::OFFENSIVE_CAMPING:
-            std::cerr << "OFF_CAMPING";
             break;
         case Strategies::OFFIELD_STRATEGY:
             std::cerr << "OFFIELD";
@@ -493,22 +433,22 @@ void StrategyManager::update(GameState& state) {
     // Step 3: Execute behavior for bot1 based on assigned role
     switch (currentRoles_.bot1Role) {
         case Roles::DEFENDER:
-            executeDefender(bot1, bot2, ball, fieldMap);
+            executeDefender(bot1, ball, fieldMap);
             break;
         case Roles::INTERCEPTOR:
-            executeInterceptor(bot1, bot2, ball, fieldMap, rival1, rival2, true);
+            executeInterceptor(bot1, ball);
             break;
         case Roles::CAMPER:
-            executeCamper(bot1, bot2, ball);
+            executeCamper(bot1);
             break;
         case Roles::SUPPORT:
-            executeSupport(bot1, bot2, ball, fieldMap, rival1, rival2);
+            executeSupport(state, bot1, bot2, ball, fieldMap, rival1, rival2);
             break;
         case Roles::ATTACKER:
-            executeAttacker(bot1, bot2, ball, fieldMap);
+            executeAttacker(bot1, bot2, ball);
             break;
         case Roles::STRIKER:
-            executeStriker(bot1, bot2, ball, fieldMap, rival1);
+            executeStriker(bot1, bot2, ball);
             break;
         case Roles::OFFIELD:
             executeOffField(bot1);
@@ -518,22 +458,22 @@ void StrategyManager::update(GameState& state) {
     // Step 4: Execute behavior for bot2 based on assigned role
     switch (currentRoles_.bot2Role) {
         case Roles::DEFENDER:
-            executeDefender(bot2, bot1, ball, fieldMap);
+            executeDefender(bot2, ball, fieldMap);
             break;
         case Roles::INTERCEPTOR:
-            executeInterceptor(bot2, bot1, ball, fieldMap, rival1, rival2, false);
+            executeInterceptor(bot2, ball);
             break;
         case Roles::CAMPER:
-            executeCamper(bot2, bot1, ball);
+            executeCamper(bot2);
             break;
         case Roles::SUPPORT:
-            executeSupport(bot2, bot1, ball, fieldMap, rival1, rival2);
+            executeSupport(state, bot2, bot1, ball, fieldMap, rival1, rival2);
             break;
         case Roles::ATTACKER:
-            executeAttacker(bot2, bot1, ball, fieldMap);
+            executeAttacker(bot2, bot1, ball);
             break;
         case Roles::STRIKER:
-            executeStriker(bot2, bot1, ball, fieldMap, rival1);
+            executeStriker(bot2, bot1, ball);
             break;
         case Roles::OFFIELD:
             executeOffField(bot2);

@@ -16,16 +16,16 @@
 // CONFIGURATION CONSTANTS
 // ========================================================================
 
-const float SMOOTH_ROTATION_SPEED = 0.08f;
-const float DRIBBLE_ROTATION_SPEED = 0.08f;
-const float MOVEMENT_STEP = 0.09f;
-const float DRIBBLE_STEP = 0.09f;
+const float SMOOTH_ROTATION_SPEED = 0.1f;
+const float DRIBBLE_ROTATION_SPEED = 0.1f;
+const float MOVEMENT_STEP = 0.12f;
+const float DRIBBLE_STEP = 0.12f;
 
 // Field boundaries with safety margin
-const float FIELD_X_MIN = -FIELD_HALF_LENGTH + 0.105f;
-const float FIELD_X_MAX = FIELD_HALF_LENGTH - 0.105f;
-const float FIELD_Z_MIN = -FIELD_HALF_WIDTH + 0.105f;
-const float FIELD_Z_MAX = FIELD_HALF_WIDTH - 0.105f;
+const float FIELD_X_MIN = -FIELD_HALF_LENGTH + 0.05f;
+const float FIELD_X_MAX = FIELD_HALF_LENGTH - 0.05f;
+const float FIELD_Z_MIN = -FIELD_HALF_WIDTH + 0.05f;
+const float FIELD_Z_MAX = FIELD_HALF_WIDTH - 0.05f;
 
 // ============================================================================
 // CONSTRUCTORS
@@ -105,7 +105,7 @@ bool Robot::canKickBall(const Ball& ball) const {
 }
 
 bool Robot::hasClearPath(float targetX, float targetZ, const Robot& opp1, const Robot& opp2) const {
-    const float BLOCKING_DISTANCE = 0.25f;
+    const float BLOCKING_DISTANCE = 0.2f;
 
     float lineLen = distanceTo(targetX, targetZ);
     if (lineLen < 0.01f)
@@ -142,6 +142,24 @@ bool Robot::hasClearPath(float targetX, float targetZ, const Robot& opp1, const 
 void Robot::clampToFieldBounds(float& x, float& z) const {
     x = std::clamp(x, FIELD_X_MIN, FIELD_X_MAX);
     z = std::clamp(z, FIELD_Z_MIN, FIELD_Z_MAX);
+
+    if (x < -FIELD_HALF_LENGTH + PENALTY_AREA_DEPTH) {
+        if (std::fabs(z) < PENALTY_AREA_HALF_WIDTH) {
+            x = -FIELD_HALF_LENGTH + PENALTY_AREA_DEPTH + 0.05f;
+            if (z > 0)
+                z = PENALTY_AREA_HALF_WIDTH + 0.05f;
+            else
+                z = -PENALTY_AREA_HALF_WIDTH - 0.05f;
+        }
+    } else if (x > FIELD_HALF_LENGTH - PENALTY_AREA_DEPTH) {
+        if (std::fabs(z) < PENALTY_AREA_HALF_WIDTH) {
+            x = -FIELD_HALF_LENGTH + PENALTY_AREA_DEPTH + 0.05f;
+            if (z > 0)
+                z = PENALTY_AREA_HALF_WIDTH + 0.05f;
+            else
+                z = -PENALTY_AREA_HALF_WIDTH - 0.05f;
+        }
+    }
 }
 
 // ============================================================================
@@ -346,8 +364,8 @@ void Robot::clearBall(const Ball& ball) {
         targetZ_ = ball.getPosZ();
         targetRotY_ = angleToTarget;
         dribbler_ = 0.0f;
-        kick_ = 1.0f;
-        chip_ = 0.0f;
+        kick_ = 0.0f;
+        chip_ = 1.0f;
 
         std::cerr << "  Action: CLEARING ball!" << std::endl;
     } else {

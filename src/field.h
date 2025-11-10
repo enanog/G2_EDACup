@@ -144,8 +144,8 @@ struct FieldMap {
      * @brief Check if ball is stuck (stationary for >5 seconds)
      * @return True if ball has been stuck for more than 5 seconds
      */
-    bool isBallStuck() const {
-        return isballStuck;
+    bool isBallStucked() const {
+        return isBallStuck;
     }
 };
 

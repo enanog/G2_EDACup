@@ -8,6 +8,7 @@
 #include "field.h"
 
 #include <algorithm>
+#include <iostream>
 #include <cmath>
 
 #include "ball.h"
@@ -34,7 +35,8 @@ FieldMap::FieldMap()
       isBallStuck(false),
       activeOpponents(0),
       closestRivalToOwnGoal(999.0f),
-      closestRivalPtr(nullptr) {}
+      closestRivalPtr(nullptr) {
+}
 
 // ============================================================================
 // FIELD MAP UPDATE
@@ -42,8 +44,6 @@ FieldMap::FieldMap()
 
 void FieldMap::update(const Ball& ball, const Robot& rival1, const Robot& rival2) {
     // Field dimensions constants
-    const float PENALTY_AREA_DEPTH = 0.30f;
-    const float PENALTY_AREA_HALF_WIDTH = 0.40f;
     const float PREDICTION_TIME = 0.15f;
 
     // ========================================================================
@@ -120,12 +120,14 @@ void FieldMap::update(const Ball& ball, const Robot& rival1, const Robot& rival2
     static float lastBallPosZ = 0.0f;
 
     // Check if ball speed is very low (< 0.15 m/s)
-    float speedSquared = ball.getVelX() * ball.getVelX() + ball.getVelZ() * ball.getVelZ();
-    bool isSpeedLow = speedSquared < 0.0225f;  // 0.15^2 = 0.0225
+    float speedSquared = ball.getVelX() * ball.getVelX() +
+                         ball.getVelY() * ball.getVelY() +
+                         ball.getVelZ() * ball.getVelZ();
+    bool isSpeedLow = speedSquared < 0.01f;  // 0.10^2
 
     // Check if ball position hasn't changed significantly
     bool isPositionConstant = (std::abs(ball.getPosX() - lastBallPosX) < 0.005f) &&
-                             (std::abs(ball.getPosZ() - lastBallPosZ) < 0.005f);
+                              (std::abs(ball.getPosZ() - lastBallPosZ) < 0.005f);
 
     // If ball is stationary, increment counter
     if (isSpeedLow || isPositionConstant) {
@@ -133,12 +135,12 @@ void FieldMap::update(const Ball& ball, const Robot& rival1, const Robot& rival2
 
         // Mark as stuck after 5 seconds (250 frames at 50Hz)
         if (ballStuckFrames >= 250) {
-            isballStuck = true;
+            isBallStuck = true;
         }
     } else {
         // Ball is moving, reset counter
         ballStuckFrames = 0;
-        isballStuck = false;
+        isBallStuck = false;
     }
 
     // Update last known position
@@ -165,18 +167,18 @@ bool FieldMap::inOppPenaltyArea(float x, float z) const {
 void FieldMap::getSafePosition(float& x, float& z) const {
     // Push out of own penalty area
     if (inOwnPenaltyArea(x, z)) {
-        x = ownPenaltyMaxX + 0.10f;
+        x = ownPenaltyMaxX + 0.125f;
     }
     // Push out of opponent penalty area
     else if (inOppPenaltyArea(x, z)) {
-        x = oppPenaltyMinX - 0.10f;
+        x = oppPenaltyMinX - 0.125f;
     }
 
     // Adjust Z if outside lateral bounds
     if (z < penaltyMinZ) {
-        z = penaltyMinZ - 0.10f;
+        z = penaltyMinZ - 0.125f;
     } else if (z > penaltyMaxZ) {
-        z = penaltyMaxZ + 0.10f;
+        z = penaltyMaxZ + 0.125f;
     }
 }
 
@@ -225,7 +227,9 @@ float FieldMap::calculatePassQuality(const Robot& passer,
     // - 40% distance optimization
     // - 60% forward progress
     // - 20% baseline bonus for any valid pass
-    return 0.4f * distScore + 0.6f * forwardAdvantage + 0.2f;
+    std::cerr << "    Pass quality calculation: dist=" << dist << ", distScore=" << distScore
+              << ", forwardAdvantage=" << forwardAdvantage << std::endl;
+    return 0.5f * distScore + 0.5f * forwardAdvantage + 0.2f;
 }
 
 // ============================================================================
