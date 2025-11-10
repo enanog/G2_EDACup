@@ -25,6 +25,7 @@ set(MAIN_SOURCES
     gamestate.cpp
     ball.cpp
     field.cpp
+    strategy.cpp
 )
 
 # Archivos header (para detecci�n de cambios)
@@ -35,6 +36,7 @@ set(MAIN_HEADERS
     constants.h
     ball.h
     field.h
+    strategy.h
 )
 
 add_executable(main ${MAIN_SOURCES} ${MAIN_HEADERS})

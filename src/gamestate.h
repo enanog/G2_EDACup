@@ -14,8 +14,9 @@
 
 #include "ball.h"
 #include "constants.h"
-#include "robot.h"
 #include "field.h"
+#include "robot.h"
+#include "strategy.h"
 
 using json = nlohmann::json;
 
@@ -32,28 +33,6 @@ enum Player {
 };
 
 /**
- * @brief Robot roles in dynamic strategy
- */
-enum class Role {
-    STRIKER,   // Attack, shoot, pass forward
-    DEFENDER,  // Protect goal, mark threats, support
-    OFFFIELD   // Robot not on field
-};
-
-/**
- * @brief Role assignment for both home robots
- */
-struct RoleAssignment {
-    Role bot1Role;
-    Role bot2Role;
-
-    RoleAssignment() : bot1Role(Role::STRIKER), bot2Role(Role::DEFENDER) {
-    }
-    RoleAssignment(Role b1, Role b2) : bot1Role(b1), bot2Role(b2) {
-    }
-};
-
-/**
  * @class GameState
  * @brief Global game state manager
  *
@@ -62,16 +41,16 @@ struct RoleAssignment {
  * - All access must be protected by external mutex (see main.cpp)
  * - parseFromJson() and update() should never be called concurrently
  *
- * Manages all robots, ball, roles, and executes strategy decisions
+ * Manages all robots, ball, and delegates strategy decisions to StrategyManager
  */
 class GameState {
   private:
-    // Unified robot storage
+    // Game entities
     std::vector<Robot> playerList_;
     Ball ball_;
 
-    // Strategy state
-    RoleAssignment currentRoles_;
+    // Strategy management
+    StrategyManager strategyManager_;
     FieldMap fieldMap_;
 
     // Frame counter
@@ -84,21 +63,6 @@ class GameState {
     static constexpr float MAX_PASS_DISTANCE = 1.2f;
     static constexpr float DANGER_ZONE_RADIUS = 0.7f;
     static constexpr float CHIP_OBSTACLE_THRESHOLD = 0.40f;
-
-    /**
-     * @brief Assign roles dynamically based on game state
-     */
-    void assignRoles();
-
-    /**
-     * @brief Execute striker behavior
-     */
-    void executeStrikerLogic(Robot& striker, const Robot& defender);
-
-    /**
-     * @brief Execute defender behavior
-     */
-    void executeDefenderLogic(Robot& defender, const Robot& striker);
 
   public:
     GameState();
@@ -155,9 +119,11 @@ class GameState {
     uint32_t getFrameCount() const {
         return frameCount_;
     }
+
     const RoleAssignment& getRoles() const {
-        return currentRoles_;
+        return strategyManager_.getCurrentRoles();
     }
+
     const FieldMap& getFieldMap() const {
         return fieldMap_;
     }
@@ -204,7 +170,7 @@ class GameState {
 
     /**
      * @brief Check which player has control of the ball
-     * @return Player enum of controlling robot, or -1 if none
+     * @return Player enum of controlling robot, or NONE if none
      */
     Player whoHasBallControl() const;
 
@@ -212,6 +178,7 @@ class GameState {
      * @brief Execute quick pass between robots
      */
     int8_t quickPass();
+
     /**
      * @brief Execute quick chip between robots
      */

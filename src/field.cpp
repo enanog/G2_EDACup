@@ -1,61 +1,96 @@
+/**
+ * @file field.cpp
+ * @brief Field mapping and tactical awareness implementation
+ * @author Agustin Valenzuela, Alex Petersen, Dylan Frigerio, Enzo Fernandez Rosas
+ * @copyright Copyright (c) 2025
+ */
+
 #include "field.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include "ball.h"
+#include "constants.h"
 #include "robot.h"
 
 // ============================================================================
-// FIELD MAP IMPLEMENTATION
+// CONSTRUCTOR
 // ============================================================================
 
 FieldMap::FieldMap()
-    : ownPenaltyMinX(0),
-      ownPenaltyMaxX(0),
-      oppPenaltyMinX(0),
-      oppPenaltyMaxX(0),
-      penaltyMinZ(0),
-      penaltyMaxZ(0),
-      predictedBallX(0),
-      predictedBallZ(0),
-      predictedBallVelX(0),
-      predictedBallVelZ(0),
-      ballDistToOwnGoal(0),
-      ballDistToOppGoal(0),
-      isballStuck(0),
+    : ownPenaltyMinX(0.0f),
+      ownPenaltyMaxX(0.0f),
+      oppPenaltyMinX(0.0f),
+      oppPenaltyMaxX(0.0f),
+      penaltyMinZ(0.0f),
+      penaltyMaxZ(0.0f),
+      predictedBallX(0.0f),
+      predictedBallZ(0.0f),
+      predictedBallVelX(0.0f),
+      predictedBallVelZ(0.0f),
+      ballDistToOwnGoal(0.0f),
+      ballDistToOppGoal(0.0f),
+      isBallStuck(false),
       activeOpponents(0),
       closestRivalToOwnGoal(999.0f),
-      closestRivalPtr(nullptr) {
-}
+      closestRivalPtr(nullptr) {}
+
+// ============================================================================
+// FIELD MAP UPDATE
+// ============================================================================
 
 void FieldMap::update(const Ball& ball, const Robot& rival1, const Robot& rival2) {
+    // Field dimensions constants
     const float PENALTY_AREA_DEPTH = 0.30f;
     const float PENALTY_AREA_HALF_WIDTH = 0.40f;
     const float PREDICTION_TIME = 0.15f;
 
-    // Define penalty areas
+    // ========================================================================
+    // DEFINE PENALTY AREAS
+    // ========================================================================
+
+    // Own penalty area (left goal)
     ownPenaltyMinX = LEFT_GOAL_X;
     ownPenaltyMaxX = LEFT_GOAL_X + PENALTY_AREA_DEPTH + 0.005f;
+
+    // Opponent penalty area (right goal)
     oppPenaltyMinX = RIGHT_GOAL_X - (PENALTY_AREA_DEPTH + 0.005f);
     oppPenaltyMaxX = RIGHT_GOAL_X;
+
+    // Z boundaries (same for both penalty areas)
     penaltyMinZ = -PENALTY_AREA_HALF_WIDTH;
     penaltyMaxZ = PENALTY_AREA_HALF_WIDTH;
 
-    // Predict ball position
+    // ========================================================================
+    // PREDICT BALL POSITION (LATENCY COMPENSATION)
+    // ========================================================================
+
     ball.predictPosition(PREDICTION_TIME, predictedBallX, predictedBallZ);
     predictedBallVelX = ball.getVelX();
     predictedBallVelZ = ball.getVelZ();
 
-    // Calculate distances
+    // ========================================================================
+    // CALCULATE DISTANCES TO GOALS
+    // ========================================================================
+
     ballDistToOwnGoal = ball.distanceTo(LEFT_GOAL_X, 0.0f);
     ballDistToOppGoal = ball.distanceTo(RIGHT_GOAL_X, 0.0f);
 
-    // Count active opponents
+    // ========================================================================
+    // COUNT ACTIVE OPPONENTS
+    // ========================================================================
+
     activeOpponents = 0;
     if (rival1.isOnField())
         activeOpponents++;
     if (rival2.isOnField())
         activeOpponents++;
 
-    // Find closest rival to own goal
+    // ========================================================================
+    // FIND CLOSEST RIVAL TO OWN GOAL (THREAT ASSESSMENT)
+    // ========================================================================
+
     closestRivalToOwnGoal = 999.0f;
     closestRivalPtr = nullptr;
 
@@ -66,6 +101,7 @@ void FieldMap::update(const Ball& ball, const Robot& rival1, const Robot& rival2
             closestRivalPtr = &rival1;
         }
     }
+
     if (rival2.isOnField()) {
         float dist = rival2.distanceTo(Robot(LEFT_GOAL_X, 0, 0));
         if (dist < closestRivalToOwnGoal) {
@@ -74,28 +110,45 @@ void FieldMap::update(const Ball& ball, const Robot& rival1, const Robot& rival2
         }
     }
 
-    // Check if ball is stuck for more than 5 seconds
+    // ========================================================================
+    // CHECK IF BALL IS STUCK (>5 SECONDS STATIONARY)
+    // ========================================================================
+
+    // Static variables to track ball state across frames
     static int ballStuckFrames = 0;
     static float lastBallPosX = 0.0f;
     static float lastBallPosZ = 0.0f;
 
-    float ballSpeedSquare = ball.getVelX() * ball.getVelX() + ball.getVelZ() * ball.getVelZ();
+    // Check if ball speed is very low (< 0.15 m/s)
+    float speedSquared = ball.getVelX() * ball.getVelX() + ball.getVelZ() * ball.getVelZ();
+    bool isSpeedLow = speedSquared < 0.0225f;  // 0.15^2 = 0.0225
 
+    // Check if ball position hasn't changed significantly
+    bool isPositionConstant = (std::abs(ball.getPosX() - lastBallPosX) < 0.005f) &&
+                             (std::abs(ball.getPosZ() - lastBallPosZ) < 0.005f);
 
-    if (ballSpeedSquare < 0.0225f) {  // 0.15^2
+    // If ball is stationary, increment counter
+    if (isSpeedLow || isPositionConstant) {
         ballStuckFrames++;
-        if (ballStuckFrames >= 50) {  // 5 seconds at 10 FPS
+
+        // Mark as stuck after 5 seconds (250 frames at 50Hz)
+        if (ballStuckFrames >= 250) {
             isballStuck = true;
         }
     } else {
+        // Ball is moving, reset counter
         ballStuckFrames = 0;
         isballStuck = false;
     }
 
-
+    // Update last known position
     lastBallPosX = ball.getPosX();
     lastBallPosZ = ball.getPosZ();
 }
+
+// ============================================================================
+// PENALTY AREA CHECKS
+// ============================================================================
 
 bool FieldMap::inOwnPenaltyArea(float x, float z) const {
     return (x >= ownPenaltyMinX && x <= ownPenaltyMaxX && z >= penaltyMinZ && z <= penaltyMaxZ);
@@ -105,19 +158,31 @@ bool FieldMap::inOppPenaltyArea(float x, float z) const {
     return (x >= oppPenaltyMinX && x <= oppPenaltyMaxX && z >= penaltyMinZ && z <= penaltyMaxZ);
 }
 
+// ============================================================================
+// SAFE POSITION ADJUSTMENT
+// ============================================================================
+
 void FieldMap::getSafePosition(float& x, float& z) const {
+    // Push out of own penalty area
     if (inOwnPenaltyArea(x, z)) {
         x = ownPenaltyMaxX + 0.10f;
-    } else if (inOppPenaltyArea(x, z)) {
+    }
+    // Push out of opponent penalty area
+    else if (inOppPenaltyArea(x, z)) {
         x = oppPenaltyMinX - 0.10f;
     }
 
+    // Adjust Z if outside lateral bounds
     if (z < penaltyMinZ) {
         z = penaltyMinZ - 0.10f;
     } else if (z > penaltyMaxZ) {
         z = penaltyMaxZ + 0.10f;
     }
 }
+
+// ============================================================================
+// PASS QUALITY ANALYSIS
+// ============================================================================
 
 bool FieldMap::isPassLineClear(const Robot& passer,
                                const Robot& receiver,
@@ -130,32 +195,46 @@ float FieldMap::calculatePassQuality(const Robot& passer,
                                      const Robot& receiver,
                                      const Robot& rival1,
                                      const Robot& rival2) const {
+    // Cannot pass to off-field robot
     if (!receiver.isOnField())
         return 0.0f;
 
     float dist = passer.distanceTo(receiver);
 
-    // Bad if too close or too far
+    // Too close or too far - bad pass
     if (dist < 0.25f || dist > 1.2f)
         return 0.0f;
 
-    // Check clearance
+    // Check if path is clear
     if (!isPassLineClear(passer, receiver, rival1, rival2))
         return 0.0f;
 
-    // Reward forward progress
+    // ========================================================================
+    // CALCULATE QUALITY COMPONENTS
+    // ========================================================================
+
+    // Reward forward progress (towards opponent goal)
     float forwardAdvantage = (receiver.getPosX() - passer.getPosX()) / FIELD_HALF_LENGTH;
     forwardAdvantage = std::clamp(forwardAdvantage, 0.0f, 1.0f);
 
-    // Distance score
+    // Optimal distance is around 1.0m
     float distScore = 1.0f - std::abs(dist - 1.0f) / 1.2f;
     distScore = std::clamp(distScore, 0.0f, 1.0f);
 
+    // Combined score with weights:
+    // - 40% distance optimization
+    // - 60% forward progress
+    // - 20% baseline bonus for any valid pass
     return 0.4f * distScore + 0.6f * forwardAdvantage + 0.2f;
 }
+
+// ============================================================================
+// SHOOTING PATH ANALYSIS
+// ============================================================================
 
 bool FieldMap::isShootingPathBlocked(const Robot& shooter,
                                      const Robot& rival1,
                                      const Robot& rival2) const {
+    // Check if there's a clear path to the center of the opponent goal
     return !shooter.hasClearPath(RIGHT_GOAL_X, 0.0f, rival1, rival2);
 }
